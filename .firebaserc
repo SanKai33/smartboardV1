@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "smartboard-d1392",
+    "smartboard": "smartboard-d1392"
+  },
+  "targets": {},
+  "etags": {}
+}

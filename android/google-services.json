@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "869187566575",
+    "firebase_url": "https://smartboard-d1392-default-rtdb.firebaseio.com",
+    "project_id": "smartboard-d1392",
+    "storage_bucket": "smartboard-d1392.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:869187566575:android:97b00f154210d97f43141a",
+        "android_client_info": {
+          "package_name": "com.smartboard1.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaUpsvUtgoJAwZLhSMznXzzZYjneJhFd0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
