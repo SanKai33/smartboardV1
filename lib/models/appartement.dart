@@ -1,8 +1,3 @@
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-
-
 class Appartement {
   String id;
   String numero;
@@ -11,9 +6,9 @@ class Appartement {
   int nombrePersonnes;
   String residenceId;
   bool menageEffectue;
-  bool prioritaire; // Ajout de la propriété 'prioritaire'
-  String note; // Ajout de la propriété 'note'
-  String typeMenage; // Ajout de la propriété 'typeMenage'
+  bool prioritaire;
+  String note;
+  String typeMenage;
 
   Appartement({
     required this.id,
@@ -23,10 +18,25 @@ class Appartement {
     required this.nombrePersonnes,
     required this.residenceId,
     this.menageEffectue = false,
-    this.prioritaire = false, // Initialisation de la propriété 'prioritaire'
-    this.note = '', // Initialisation de la propriété 'note'
-    this.typeMenage = 'Ménage', // Initialisation de la propriété 'typeMenage'
+    this.prioritaire = false,
+    this.note = '',
+    this.typeMenage = 'Ménage',
   });
+
+  factory Appartement.fromMap(Map<String, dynamic> map, String id) {
+    return Appartement(
+      id: id,
+      numero: map['numero'] ?? '',
+      batiment: map['batiment'] ?? '',
+      typologie: map['typologie'] ?? '',
+      nombrePersonnes: map['nombrePersonnes'] ?? 0,
+      residenceId: map['residenceId'] ?? '',
+      menageEffectue: map['menageEffectue'] ?? false,
+      prioritaire: map['prioritaire'] ?? false,
+      note: map['note'] ?? '',
+      typeMenage: map['typeMenage'] ?? 'Ménage',
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -37,25 +47,9 @@ class Appartement {
       'nombrePersonnes': nombrePersonnes,
       'residenceId': residenceId,
       'menageEffectue': menageEffectue,
-      'prioritaire': prioritaire, // Inclusion dans la map
-      'note': note, // Inclusion dans la map
-      'typeMenage': typeMenage, // Inclusion dans la map
+      'prioritaire': prioritaire,
+      'note': note,
+      'typeMenage': typeMenage,
     };
-  }
-
-  factory Appartement.fromMap(DocumentSnapshot doc) {
-    var map = doc.data() as Map<String, dynamic>? ?? {};
-    return Appartement(
-      id: doc.id,
-      numero: map['numero'] ?? '',
-      batiment: map['batiment'] ?? '',
-      typologie: map['typologie'] ?? '',
-      nombrePersonnes: map['nombrePersonnes']?.toInt() ?? 0,
-      residenceId: map['residenceId'] ?? '',
-      menageEffectue: map['menageEffectue'] ?? false,
-      prioritaire: map['prioritaire'] ?? false, // Récupération de la valeur
-      note: map['note'] ?? '', // Récupération de la valeur
-      typeMenage: map['typeMenage'] ?? 'Ménage', // Récupération de la valeur
-    );
   }
 }

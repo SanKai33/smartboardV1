@@ -1,11 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import 'home_page.dart';
 import 'models/appartement.dart';
 import 'models/commande.dart';
-
-
 
 
 
@@ -19,35 +16,16 @@ class ValidationMenagePage extends StatefulWidget {
 }
 
 class _ValidationMenagePageState extends State<ValidationMenagePage> {
-  Map<String, bool> etatMenage = {};
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    for (var appartement in widget.commande.appartements) {
-      etatMenage[appartement.numero] = appartement.menageEffectue; // Supposons que vous avez ce champ dans votre modèle
-    }
-  }
-
-  void _enregistrerMenage() {
-    // TODO: Implémenter la logique pour enregistrer l'état du ménage
-    // Marquer la commande comme complète si tous les ménages sont faits
-    bool tousMenageEffectues = etatMenage.values.every((etat) => etat);
-    if (tousMenageEffectues) {
-      // TODO: Mettre à jour la commande dans votre base de données
-    }
-
-    // Afficher un message de succès ou naviguer vers une autre page
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('État du ménage enregistré avec succès!')),
-    );
-    // Obtenir l'ID de l'entreprise de l'utilisateur courant
-    String entrepriseId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    // Naviguer vers la page d'accueil
-    Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage(entrepriseId: entrepriseId))
-    );
+  void _updateMenageStatus(Appartement appartement, bool menageEffectue) async {
+    // Mettre à jour l'état du ménage dans la base de données
+    await _firestore
+        .collection('commandes') // Le nom de votre collection
+        .doc(widget.commande.id) // L'ID de la commande
+        .update({
+      'appartements': widget.commande.appartements.map((a) => a.toMap()).toList()
+    });
   }
 
   @override
@@ -59,24 +37,25 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
       body: ListView.builder(
         itemCount: widget.commande.appartements.length,
         itemBuilder: (context, index) {
-          var appartement = widget.commande.appartements[index];
-          return ListTile(
-            title: Text('Appartement ${appartement.numero}'),
-            trailing: Checkbox(
-              value: etatMenage[appartement.numero],
-              onChanged: (bool? value) {
-                setState(() {
-                  etatMenage[appartement.numero] = value ?? false;
-                  // Si vous mettez à jour l'état dans Firestore, faites-le ici
-                });
-              },
+          Appartement appartement = widget.commande.appartements[index];
+          bool menageEffectue = appartement.menageEffectue;
+
+          return Card(
+            child: ListTile(
+              title: Text('Appartement ${appartement.numero}'),
+              subtitle: Text('Ménage effectué: ${menageEffectue ? "Oui" : "Non"}'),
+              trailing: Checkbox(
+                value: menageEffectue,
+                onChanged: (bool? value) {
+                  setState(() {
+                    appartement.menageEffectue = value ?? false;
+                    _updateMenageStatus(appartement, value ?? false);
+                  });
+                },
+              ),
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _enregistrerMenage,
-        child: Icon(Icons.save),
       ),
     );
   }
