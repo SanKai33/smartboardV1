@@ -36,9 +36,9 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
 
       setState(() {
         appartements = querySnapshot.docs
-            .map((doc) => Appartement.fromMap(doc.data() as DocumentSnapshot<Object?>))
+            .map((doc) => Appartement.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList();
-        selectedAppartements = {for (var appart in appartements) appart.numero: false};
+        selectedAppartements = {for (var appart in appartements) appart.id: false};
         isLoading = false;
       });
     } catch (error) {
@@ -65,7 +65,7 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
 
   void _onSuivantPressed() {
     List<Appartement> selected = appartements
-        .where((appart) => selectedAppartements[appart.numero] ?? false)
+        .where((appart) => selectedAppartements[appart.id] ?? false)
         .toList();
 
     if (selectedDate == null || selected.isEmpty) {
@@ -113,10 +113,10 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
                   child: CheckboxListTile(
                     title: Text('Appartement ${appartement.numero}'),
                     subtitle: Text('Bâtiment: ${appartement.batiment}, Typologie: ${appartement.typologie}'),
-                    value: selectedAppartements[appartement.numero],
+                    value: selectedAppartements[appartement.id],
                     onChanged: (bool? value) {
                       setState(() {
-                        selectedAppartements[appartement.numero] = value!;
+                        selectedAppartements[appartement.id] = value!;
                       });
                     },
                   ),

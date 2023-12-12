@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "firebase": "^10.6.0"
+    "firebase": "^10.7.1"
   },
   "devDependencies": {
     "eslint": "^8.55.0"

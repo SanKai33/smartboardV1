@@ -4,8 +4,6 @@ import 'models/appartement.dart';
 import 'models/residence.dart';
 import 'residences_page.dart';
 
-
-
 class ParametrerPage extends StatefulWidget {
   final String entrepriseId;
   final Residence? residence;
@@ -42,12 +40,15 @@ class _ParametrerPageState extends State<ParametrerPage> {
         .then((QuerySnapshot querySnapshot) {
       setState(() {
         appartements = querySnapshot.docs
-            .map((doc) => Appartement.fromMap(doc as DocumentSnapshot))
+            .map((doc) => Appartement.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList();
         isLoading = false;
       });
     }).catchError((error) {
       print('Erreur lors du chargement des appartements: $error');
+      setState(() {
+        isLoading = false;
+      });
     });
   }
 

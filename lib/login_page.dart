@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:smartboard/registrer_page.dart';
 import 'main_screen.dart'; // Importez votre écran principal
+import 'registrer_page.dart'; // Assurez-vous que cette page existe dans votre projet
 
 class LoginPage extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
@@ -19,9 +19,13 @@ class LoginPage extends StatelessWidget {
       String userId = userCredential.user!.uid;
       DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
+      if (userDoc.data() == null) {
+        throw Exception("Les données de l'utilisateur ne sont pas disponibles.");
+      }
+
       // Convertir les données en Map pour un accès facile
-      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      String entrepriseId = userData['entrepriseId']; // Utilisez le cast pour accéder aux données
+      Map<String, dynamic> userData = userDoc.data()! as Map<String, dynamic>;
+      String entrepriseId = userData['entrepriseId'];
 
       // Vérification de l'existence de l'entreprise
       DocumentSnapshot entrepriseDoc = await FirebaseFirestore.instance.collection('entreprise').doc(entrepriseId).get();
@@ -46,6 +50,10 @@ class LoginPage extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
   }
 
@@ -55,62 +63,66 @@ class LoginPage extends StatelessWidget {
       appBar: AppBar(
         title: Text('Connexion'),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                TextField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            SizedBox(height: 50), // Espace réduit en haut
+            Image.asset('assets/images/icon.png', width: 100, height: 100), // Logo
+            SizedBox(height: 50),
+            Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  TextField(
+                    controller: emailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Mot de passe',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                  SizedBox(height: 20),
+                  TextField(
+                    controller: passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Mot de passe',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock),
+                    ),
+                    obscureText: true,
                   ),
-                  obscureText: true,
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => _login(context),
-                  child: Text('Connexion'),
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.black,
-                    onPrimary: Colors.white,
-                    minimumSize: Size(double.infinity, 50),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => _login(context),
+                    child: Text('Connexion'),
+                    style: ElevatedButton.styleFrom(
+                      primary: Colors.black,
+                      onPrimary: Colors.white,
+                      minimumSize: Size(double.infinity, 50),
+                    ),
                   ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => RegisterPage()), // Assurez-vous que cette page existe dans votre projet
-                    );
-                  },
-                  child: Text('Créer un compte'),
-                  style: ElevatedButton.styleFrom(
-                    primary: Theme.of(context).primaryColor,
-                    onPrimary: Colors.white,
-                    minimumSize: Size(double.infinity, 50),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => RegisterPage()),
+                      );
+                    },
+                    child: Text('Créer un compte'),
+                    style: ElevatedButton.styleFrom(
+                      primary: Theme.of(context).primaryColor,
+                      onPrimary: Colors.white,
+                      minimumSize: Size(double.infinity, 50),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
-

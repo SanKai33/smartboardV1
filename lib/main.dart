@@ -1,15 +1,16 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:smartboard/main_screen.dart';
 
 import 'package:smartboard/slaphscreen.dart';
 
 
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Assurez-vous que c'est la première ligne dans main
-  await Firebase.initializeApp(); // Attendez que Firebase soit initialisé avant de lancer l'application
-  runApp(MaterialApp(home: SplashScreen()));
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(MyApp());
 
  }
 
@@ -22,7 +23,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      //home: LoginPage(), // La page de connexion est le premier écran affiché
+      home: MainScreen(entrepriseId: '',), // La page de connexion est le premier écran affiché
 
     );
   }

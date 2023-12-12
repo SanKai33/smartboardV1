@@ -125,7 +125,10 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
       nomResidence: widget.residence.nom,
       dateCommande: widget.dateCommande,
       appartements: widget.appartementsSelectionnes,
-      detailsAppartements: {}, entrepriseId: '', // Remplacez ceci par votre logique de détail
+      detailsAppartements: Map<String, Map<String, dynamic>>.from(appartementDetailsFormatted),
+
+      // Assurez-vous que ces détails sont correctement formatés
+      entrepriseId: widget.entrepriseId, // Utilisez l'entrepriseId passé au widget
     );
     // Enregistrez la commande dans la collection 'commandes'
     try {
