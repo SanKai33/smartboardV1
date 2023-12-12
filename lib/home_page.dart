@@ -45,7 +45,7 @@ class HomePage extends StatelessWidget {
               ),
               Spacer(),
               IconButton(
-                icon: Icon(Icons.messenger_outline),
+                icon: Icon(Icons.send_outlined),
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage())),
               ),
             ],

@@ -1,18 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'main_screen.dart'; // Importez votre écran principal
-import 'registrer_page.dart'; // Assurez-vous que cette page existe dans votre projet
+import 'main_screen.dart';
+import 'registrer_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  bool isLoading = false;
+
   Future<void> _login(BuildContext context) async {
+    String email = emailController.text.trim();
+    String password = passwordController.text;
+
+    if (email.isEmpty || !email.contains('@')) {
+      _showSnackBar(context, "Veuillez entrer une adresse email valide.");
+      return;
+    }
+    if (password.isEmpty) {
+      _showSnackBar(context, "Veuillez entrer votre mot de passe.");
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
     try {
       UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
+        email: email,
+        password: password,
       );
 
       // Récupération de l'ID d'entreprise associé à l'utilisateur
@@ -38,23 +61,20 @@ class LoginPage extends StatelessWidget {
         MaterialPageRoute(builder: (context) => MainScreen(entrepriseId: entrepriseId)),
       );
     } on FirebaseAuthException catch (e) {
-      String message;
-      if (e.code == 'user-not-found') {
-        message = 'Aucun utilisateur trouvé pour cet email.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Mauvais mot de passe fourni pour cet utilisateur.';
-      } else {
-        message = 'Une erreur est survenue. Veuillez réessayer plus tard.';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      _showSnackBar(context, "Erreur Firebase: ${e.message}");
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      _showSnackBar(context, e.toString());
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -66,8 +86,8 @@ class LoginPage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(height: 50), // Espace réduit en haut
-            Image.asset('assets/images/icon.png', width: 100, height: 100), // Logo
+            SizedBox(height: 50),
+            Image.asset('assets/images/icon.png', width: 100, height: 100),
             SizedBox(height: 50),
             Padding(
               padding: EdgeInsets.all(16.0),
@@ -96,7 +116,7 @@ class LoginPage extends StatelessWidget {
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () => _login(context),
-                    child: Text('Connexion'),
+                    child: Text(isLoading ? 'Connexion en cours...' : 'Connexion'),
                     style: ElevatedButton.styleFrom(
                       primary: Colors.black,
                       onPrimary: Colors.white,
