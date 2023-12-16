@@ -10,6 +10,8 @@
 	<string>Smartboard</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleGetInfoString</key>
+	<string></string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -23,9 +25,21 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string></string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>need camera acces to select a picture of account</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>need to access to docume,nt folder four select a picture </string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>need this to implement a picture for appartment</string>
+	<key>NSPhotoLibraryUsageDescription
+
+    This issue relates to your app accessing sensitive user data, such as photos. Apple requires a clear user-facing purpose string in your Info.plist file under the key NSPhotoLibraryUsageDescription. This string should explain why your app needs access to this data. It's important even if your app doesn't directly use APIs that access sensitive data, as any included libraries or SDKs might. More information can be found on the Apple Developer Documentation.</key>
+	<string>need this for the account circular view</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

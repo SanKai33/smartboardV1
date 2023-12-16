@@ -1,24 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:smartboard/main_screen.dart';
 import 'models/appartement.dart';
 import 'models/commande.dart';
 import 'models/residence.dart';
 
-
 class CommandeDetailsPage extends StatefulWidget {
   final List<Appartement> appartementsSelectionnes;
   final DateTime dateCommande;
   final String entrepriseId;
-  final Residence residence; // Ajoutez ceci si vous avez besoin de la résidence
+  final Residence residence;
 
   CommandeDetailsPage({
     Key? key,
     required this.appartementsSelectionnes,
     required this.dateCommande,
     required this.entrepriseId,
-    required this.residence, // N'oubliez pas d'ajouter ceci dans le constructeur
+    required this.residence,
   }) : super(key: key);
 
   @override
@@ -39,6 +37,7 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
       };
     }
   }
+
   void _showAppartementDialog(Appartement appartement) {
     var details = appartementDetails[appartement.numero];
     showDialog(
@@ -107,49 +106,46 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
   }
 
   Future<void> _finaliserCommande() async {
-
-
-
     Map<String, dynamic> appartementDetailsFormatted = {};
     for (var appartement in widget.appartementsSelectionnes) {
+      var details = appartementDetails[appartement.numero];
       appartementDetailsFormatted[appartement.id] = {
-        'prioritaire': appartement.prioritaire,
-        'note': appartement.note,
-        'typeMenage': appartement.typeMenage,
+        'prioritaire': details?['prioritaire'] ?? false,
+        'note': details?['note'] ?? '',
+        'typeMenage': details?['typeMenage'] ?? 'Ménage',
       };
     }
 
-    // Construisez la commande
     Commande commande = Commande(
       id: FirebaseFirestore.instance.collection('commandes').doc().id,
       nomResidence: widget.residence.nom,
       dateCommande: widget.dateCommande,
       appartements: widget.appartementsSelectionnes,
       detailsAppartements: Map<String, Map<String, dynamic>>.from(appartementDetailsFormatted),
-
-      // Assurez-vous que ces détails sont correctement formatés
-      entrepriseId: widget.entrepriseId, // Utilisez l'entrepriseId passé au widget
+      entrepriseId: widget.entrepriseId, equipes: [],
     );
-    // Enregistrez la commande dans la collection 'commandes'
+
     try {
       DocumentReference docRef = await FirebaseFirestore.instance.collection('commandes').add(commande.toMap());
-      // Vérifiez si le document a été créé avec succès
       if (docRef.id.isNotEmpty) {
+        // Enregistrer la notification
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'titre': 'Nouvelle commande',
+          'message': 'Une nouvelle commande a été passée pour la résidence ${widget.residence.nom}.',
+          'timestamp': FieldValue.serverTimestamp(),
+          'entrepriseId': widget.entrepriseId, // Ajoutez cette ligne
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Commande enregistrée avec succès avec ID: ${docRef.id}')));
-        // Naviguez vers la page principale ou effectuez d'autres actions
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => MainScreen(entrepriseId: widget.entrepriseId)),
+              (Route<dynamic> route) => false,
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de l\'enregistrement de la commande: ${e.toString()}')));
     }
-
-
-
-    // Puis naviguer vers la page principale
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => MainScreen(entrepriseId: widget.entrepriseId)),
-          (Route<dynamic> route) => false,
-    );
   }
 
   @override
@@ -166,7 +162,7 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
           return Card(
             child: ListTile(
               title: Text('Appartement ${appartement.numero}'),
-              subtitle: Text('${details['typeMenage']}${details['prioritaire'] ? " (Prioritaire)" : ""}\\nNote: ${details['note']}'),
+              subtitle: Text('${details['typeMenage']}${details['prioritaire'] ? " (Prioritaire)" : ""}\nNote: ${details['note']}'),
               onTap: () => _showAppartementDialog(appartement),
             ),
           );

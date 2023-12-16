@@ -9,6 +9,7 @@ class Appartement {
   bool prioritaire;
   String note;
   String typeMenage;
+  String etatValidation; // Nouvel attribut pour l'état de validation
 
   Appartement({
     required this.id,
@@ -21,6 +22,7 @@ class Appartement {
     this.prioritaire = false,
     this.note = '',
     this.typeMenage = 'Ménage',
+    this.etatValidation = '', // Initialiser à une chaîne vide
   });
 
   factory Appartement.fromMap(Map<String, dynamic> map, String id) {
@@ -35,6 +37,7 @@ class Appartement {
       prioritaire: map['prioritaire'] ?? false,
       note: map['note'] ?? '',
       typeMenage: map['typeMenage'] ?? 'Ménage',
+      etatValidation: map['etatValidation'] ?? '', // Ajout de l'état de validation
     );
   }
 
@@ -50,6 +53,9 @@ class Appartement {
       'prioritaire': prioritaire,
       'note': note,
       'typeMenage': typeMenage,
+      'etatValidation': etatValidation, // Inclure l'état de validation
     };
   }
+
+// Ajoutez des méthodes pour gérer les changements d'état si nécessaire
 }

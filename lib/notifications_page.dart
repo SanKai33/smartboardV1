@@ -1,6 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class NotificationsPage extends StatelessWidget {
+  final String entrepriseId;
+
+  NotificationsPage({required this.entrepriseId});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -9,8 +14,38 @@ class NotificationsPage extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
       ),
-      body: Center(
-        child: Text('Vos notifications s\'afficheront ici.'),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('notifications')
+            .where('entrepriseId', isEqualTo: entrepriseId)
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Erreur lors du chargement des notifications'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('Aucune notification.'));
+          }
+
+          return ListView(
+            children: snapshot.data!.docs.map((DocumentSnapshot document) {
+              Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+              return Card(
+                child: ListTile(
+                  title: Text(data['titre']),
+                  subtitle: Text(data['message']),
+                  trailing: Icon(Icons.notifications),
+                ),
+              );
+            }).toList(),
+          );
+        },
       ),
     );
   }

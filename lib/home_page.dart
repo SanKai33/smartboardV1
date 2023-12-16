@@ -118,6 +118,7 @@ class CommandesEnCoursWidget extends StatelessWidget {
               child: ListTile(
                 title: Text(commande.nomResidence),
                 subtitle: Text(DateFormat('yyyy-MM-dd – kk:mm').format(commande.dateCommande)),
+                trailing: Text('${commande.appartements.length} appartements'),  // Affiche le nombre d'appartements
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => ValidationMenagePage(commande: commande),

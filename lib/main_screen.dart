@@ -25,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
       HomePage(entrepriseId: widget.entrepriseId),
       CalendarPage(),
       ResidencesPage(entrepriseId: widget.entrepriseId), // Utilisation de l'entrepriseId du widget MainScreen
-      NotificationsPage(),
+      NotificationsPage(entrepriseId:widget.entrepriseId),
       PersonnelPage(entrepriseId: widget.entrepriseId,),
     ];
   }
