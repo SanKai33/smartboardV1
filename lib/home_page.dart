@@ -19,7 +19,7 @@ class HomePage extends StatelessWidget {
       Entreprise entreprise = Entreprise.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
       return entreprise.nom;
     }
-    return 'Nom de l\'entreprise';
+    return '';
   }
 
   @override
@@ -40,7 +40,7 @@ class HomePage extends StatelessWidget {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
                   }
-                  return Text(snapshot.data ?? 'Nom de l\'entreprise');
+                  return Text(snapshot.data ?? '');
                 },
               ),
               Spacer(),
@@ -112,13 +112,17 @@ class CommandesEnCoursWidget extends StatelessWidget {
           itemCount: commandes.length,
           itemBuilder: (context, index) {
             final commande = commandes[index];
+            int totalAppartements = commande.appartements.length;
+            int appartementsMenageFait = commande.detailsAppartements.values.where((details) => details.menageEffectue).length;
+            double pourcentageAvancement = (totalAppartements > 0) ? (appartementsMenageFait / totalAppartements * 100) : 0.0;
+
             return Card(
               elevation: 4,
               margin: EdgeInsets.all(8),
               child: ListTile(
                 title: Text(commande.nomResidence),
-                subtitle: Text(DateFormat('yyyy-MM-dd – kk:mm').format(commande.dateCommande)),
-                trailing: Text('${commande.appartements.length} appartements'),  // Affiche le nombre d'appartements
+                subtitle: Text('${DateFormat('dd/MM/yyyy – kk:mm').format(commande.dateCommande.toLocal())}'),
+                trailing: Text('${pourcentageAvancement.toStringAsFixed(0)}% avancé'),
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => ValidationMenagePage(commande: commande),

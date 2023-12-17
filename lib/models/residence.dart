@@ -5,7 +5,7 @@ class Residence {
   String nom;
   String adresse;
   String entrepriseId;
-  String imageUrl;  // Ajout du champ pour l'URL de l'image
+  String imageUrl;  // Champ pour l'URL de l'image
 
   Residence({
     required this.id,

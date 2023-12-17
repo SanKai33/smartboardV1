@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:smartboard/main_screen.dart';
 import 'models/appartement.dart';
 import 'models/commande.dart';
+import 'models/detailAppartement.dart';
 import 'models/residence.dart';
 
 class CommandeDetailsPage extends StatefulWidget {
@@ -24,22 +25,18 @@ class CommandeDetailsPage extends StatefulWidget {
 }
 
 class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
-  Map<String, Map<String, dynamic>> appartementDetails = {};
+  Map<String, DetailsAppartement> appartementDetails = {};
 
   @override
   void initState() {
     super.initState();
     for (var appartement in widget.appartementsSelectionnes) {
-      appartementDetails[appartement.numero] = {
-        'prioritaire': false,
-        'note': '',
-        'typeMenage': 'Ménage'
-      };
+      appartementDetails[appartement.id] = DetailsAppartement();
     }
   }
 
   void _showAppartementDialog(Appartement appartement) {
-    var details = appartementDetails[appartement.numero];
+    var details = appartementDetails[appartement.id];
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -52,25 +49,25 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
                 children: <Widget>[
                   CheckboxListTile(
                     title: const Text('Prioritaire'),
-                    value: details?['prioritaire'],
+                    value: details?.prioritaire,
                     onChanged: (bool? value) {
                       setState(() {
-                        details?['prioritaire'] = value;
+                        details?.prioritaire = value!;
                       });
                     },
                   ),
                   TextFormField(
-                    initialValue: details?['note'],
+                    initialValue: details?.note,
                     decoration: const InputDecoration(labelText: 'Note'),
                     onChanged: (value) {
-                      details?['note'] = value;
+                      details?.note = value;
                     },
                   ),
                   DropdownButton<String>(
-                    value: details?['typeMenage'],
+                    value: details?.typeMenage,
                     onChanged: (String? newValue) {
                       setState(() {
-                        details?['typeMenage'] = newValue;
+                        details?.typeMenage = newValue!;
                       });
                     },
                     items: <String>['Ménage', 'Recouche', 'Dégraissage', 'Fermeture']
@@ -94,7 +91,7 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
               child: const Text('Enregistrer'),
               onPressed: () {
                 setState(() {
-                  appartementDetails[appartement.numero] = details!;
+                  appartementDetails[appartement.id] = details!;
                 });
                 Navigator.of(context).pop();
               },
@@ -106,34 +103,25 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
   }
 
   Future<void> _finaliserCommande() async {
-    Map<String, dynamic> appartementDetailsFormatted = {};
-    for (var appartement in widget.appartementsSelectionnes) {
-      var details = appartementDetails[appartement.numero];
-      appartementDetailsFormatted[appartement.id] = {
-        'prioritaire': details?['prioritaire'] ?? false,
-        'note': details?['note'] ?? '',
-        'typeMenage': details?['typeMenage'] ?? 'Ménage',
-      };
-    }
-
     Commande commande = Commande(
       id: FirebaseFirestore.instance.collection('commandes').doc().id,
       nomResidence: widget.residence.nom,
       dateCommande: widget.dateCommande,
       appartements: widget.appartementsSelectionnes,
-      detailsAppartements: Map<String, Map<String, dynamic>>.from(appartementDetailsFormatted),
-      entrepriseId: widget.entrepriseId, equipes: [], validation: {},
+      detailsAppartements: appartementDetails,
+      entrepriseId: widget.entrepriseId,
+      equipes: [],
+      validation: {}, residenceId: '',
     );
 
     try {
       DocumentReference docRef = await FirebaseFirestore.instance.collection('commandes').add(commande.toMap());
       if (docRef.id.isNotEmpty) {
-        // Enregistrer la notification
         await FirebaseFirestore.instance.collection('notifications').add({
           'titre': 'Nouvelle commande',
           'message': 'Une nouvelle commande a été passée pour la résidence ${widget.residence.nom}.',
           'timestamp': FieldValue.serverTimestamp(),
-          'entrepriseId': widget.entrepriseId, // Ajoutez cette ligne
+          'entrepriseId': widget.entrepriseId,
         });
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Commande enregistrée avec succès avec ID: ${docRef.id}')));
@@ -158,11 +146,11 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
         itemCount: widget.appartementsSelectionnes.length,
         itemBuilder: (context, index) {
           final appartement = widget.appartementsSelectionnes[index];
-          final details = appartementDetails[appartement.numero]!;
+          final details = appartementDetails[appartement.id]!;
           return Card(
             child: ListTile(
               title: Text('Appartement ${appartement.numero}'),
-              subtitle: Text('${details['typeMenage']}${details['prioritaire'] ? " (Prioritaire)" : ""}\nNote: ${details['note']}'),
+              subtitle: Text('${details.typeMenage}${details.prioritaire ? " (Prioritaire)" : ""}\nNote: ${details.note}'),
               onTap: () => _showAppartementDialog(appartement),
             ),
           );

@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smartboard/selection_appartement_page.dart';
-
 import 'models/appartement.dart';
 import 'models/commande.dart';
+import 'models/detailAppartement.dart';
 import 'models/equipes.dart';
 import 'models/residence.dart';
 
@@ -37,9 +37,16 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     });
   }
 
+  void _updateCommande() async {
+    await _firestore.collection('commandes').doc(widget.commande.id).update({
+      'detailsAppartements': widget.commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
+      'equipes': widget.commande.equipes.map((e) => e.toMap()).toList(),
+    });
+    _loadCommande();
+  }
+
+
   void _loadResidence() async {
-    // Chargez la résidence en utilisant widget.commande.residenceId
-    // Assurez-vous que vous avez un champ residenceId dans votre modèle de commande
     DocumentSnapshot resSnapshot = await _firestore.collection('residences').doc(widget.commande.residenceId).get();
     setState(() {
       residence = Residence.fromFirestore(resSnapshot);
@@ -75,6 +82,14 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
         );
       },
     );
+  }
+
+  double _calculerAvancement() {
+    int totalAppartements = widget.commande.appartements.length;
+    int appartementsFait = widget.commande.detailsAppartements.values
+        .where((details) => details.menageEffectue)
+        .length;
+    return (appartementsFait / totalAppartements) * 100;
   }
 
   void _afficherOptionsRetourMenage(Appartement appartement) {
@@ -121,26 +136,46 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   }
 
   void _choisirOption(Appartement appartement, String choix) {
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(); // Ferme la boîte de dialogue
     setState(() {
-      widget.commande.validation[appartement.id] = choix;
+      DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
+
+      // Si c'est un retour, mettre à jour la note et marquer le ménage comme non effectué
+      if (choix.startsWith('Retour:')) {
+        details.note = choix.replaceFirst('Retour: ', '');
+        details.etatValidation = 'Retour: ' + details.note;
+        details.menageEffectue = false;
+      } else if (details.etatValidation != choix) {
+        // Si ménage/contrôle validé, mettre à jour l'état et marquer le ménage comme effectué si nécessaire
+        details.etatValidation = choix;
+        details.menageEffectue = choix == 'Ménage validé';
+      } else {
+        // Si l'utilisateur clique à nouveau sur la même option, réinitialiser l'état
+        details.etatValidation = '';
+        details.menageEffectue = false;
+      }
+
+      widget.commande.detailsAppartements[appartement.id] = details;
       _updateCommande();
     });
   }
 
-  void _updateCommande() async {
-    await _firestore.collection('commandes').doc(widget.commande.id).update({
-      'validation': widget.commande.validation,
-      'equipes': widget.commande.equipes.map((e) => e.toMap()).toList(),
+  void _creerNotification(Appartement appartement, String message) {
+    FirebaseFirestore.instance.collection('notifications').add({
+      'titre': 'Notification de ménage',
+      'message': message,
+      'timestamp': FieldValue.serverTimestamp(),
+      'entrepriseId': widget.commande.entrepriseId,
+      // Vous pouvez ajouter d'autres détails si nécessaire
     });
-    _loadCommande();
   }
 
-  Color _getCardColor(Appartement appartement) {
-    if (appartement.etatValidation.startsWith('Retour:')) {
+
+  Color _getCardColor(DetailsAppartement details) {
+    if (details.etatValidation.startsWith('Retour:')) {
       return Colors.red.shade100;
     } else {
-      switch (appartement.etatValidation) {
+      switch (details.etatValidation) {
         case 'Ménage validé':
           return Colors.lightBlue.shade100;
         case 'Contrôle validé':
@@ -279,6 +314,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
 
   @override
   Widget build(BuildContext context) {
+
+    double avancement = _calculerAvancement();
     return Scaffold(
       appBar: AppBar(
         title: Text('Validation du Ménage'),
@@ -309,9 +346,24 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
       ),
       body: Column(
         children: [
-          ElevatedButton(
-            onPressed: _ajouterEquipe,
-            child: Text('Ajouter une équipe'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Padding(
+                padding: EdgeInsets.all(10),
+                child: Text(
+                  'Avancement: ${avancement.toStringAsFixed(0)}%',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(10),
+                child: ElevatedButton(
+                  onPressed: _ajouterEquipe,
+                  child: Text('Ajouter une équipe'),
+                ),
+              ),
+            ],
           ),
           Expanded(
             child: ListView(
@@ -328,9 +380,10 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                     ],
                   ),
                   children: widget.commande.appartements.map((appartement) {
+                    DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
                     return ListTile(
                       title: Text('Appartement ${appartement.numero}'),
-                      subtitle: Text('État : ${appartement.etatValidation.isNotEmpty ? appartement.etatValidation : "Non validé"}'),
+                      subtitle: Text('État : ${details.etatValidation.isNotEmpty ? details.etatValidation : "Non validé"}'),
                     );
                   }).toList(),
                 ),
@@ -350,11 +403,20 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                     ),
                     children: equipe.appartementIds.map((id) {
                       Appartement appartement = widget.commande.appartements.firstWhere((a) => a.id == id);
+                      DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
                       return Card(
-                        color: _getCardColor(appartement),
+                        color: _getCardColor(details),
                         child: ListTile(
-                          title: Text('Appartement ${appartement.numero}'),
-                          subtitle: Text('État : ${appartement.etatValidation.isNotEmpty ? appartement.etatValidation : "Non validé"}'),
+                          leading: details.prioritaire ? Icon(Icons.priority_high, color: Colors.red) : null, // Icône de priorité
+                          title: Text('Appartement ${appartement.numero} - ${appartement.typologie} - Bâtiment ${appartement.batiment}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text('État: ${details.etatValidation.isNotEmpty ? details.etatValidation : "Non validé"}'),
+                              Text('Type de ménage: ${details.typeMenage}'),
+                              if (details.note.isNotEmpty) Text('Note: ${details.note}'),
+                            ],
+                          ),
                           onTap: () => _afficherOptionsValidation(appartement),
                         ),
                       );
