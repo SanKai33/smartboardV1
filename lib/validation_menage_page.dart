@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:smartboard/creer_equipes.dart';
+import 'package:intl/intl.dart';
+import 'package:smartboard/selection_appartement_page.dart';
+
 import 'models/appartement.dart';
 import 'models/commande.dart';
+import 'models/equipes.dart';
+import 'models/residence.dart';
 
 
 
@@ -17,6 +21,7 @@ class ValidationMenagePage extends StatefulWidget {
 
 class _ValidationMenagePageState extends State<ValidationMenagePage> {
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  Residence? residence; // Variable pour stocker l'objet Residence
 
   @override
   void initState() {
@@ -29,6 +34,15 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     Commande updatedCommande = Commande.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
     setState(() {
       widget.commande = updatedCommande;
+    });
+  }
+
+  void _loadResidence() async {
+    // Chargez la résidence en utilisant widget.commande.residenceId
+    // Assurez-vous que vous avez un champ residenceId dans votre modèle de commande
+    DocumentSnapshot resSnapshot = await _firestore.collection('residences').doc(widget.commande.residenceId).get();
+    setState(() {
+      residence = Residence.fromFirestore(resSnapshot);
     });
   }
 
@@ -109,14 +123,15 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   void _choisirOption(Appartement appartement, String choix) {
     Navigator.of(context).pop();
     setState(() {
-      appartement.etatValidation = choix;
-      _updateAppartement(appartement);
+      widget.commande.validation[appartement.id] = choix;
+      _updateCommande();
     });
   }
 
-  void _updateAppartement(Appartement appartement) async {
-    await _firestore.collection('appartements').doc(appartement.id).update({
-      'etatValidation': appartement.etatValidation,
+  void _updateCommande() async {
+    await _firestore.collection('commandes').doc(widget.commande.id).update({
+      'validation': widget.commande.validation,
+      'equipes': widget.commande.equipes.map((e) => e.toMap()).toList(),
     });
     _loadCommande();
   }
@@ -136,51 +151,280 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     }
   }
 
+
+
+  void _ajouterEquipe() {
+    setState(() {
+      String newTeamName = 'Équipe ${widget.commande.equipes.length + 1}';
+      widget.commande.equipes.add(Equipe(nom: newTeamName, appartementIds: [], appartements: []));
+    });
+  }
+
+  void _showTeamOptions(Equipe equipe) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Options pour ${equipe.nom}"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                title: Text('Affecter des appartements'),
+                onTap: () => _showAssignAppartementsDialog(equipe),
+              ),
+              ListTile(
+                title: Text('Supprimer l\'équipe'),
+                onTap: () => _deleteEquipe(equipe),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAssignAppartementsDialog(Equipe equipe) {
+    // Création d'une map pour suivre les appartements sélectionnés
+    Map<String, bool> selectedAppartements = Map.fromIterable(
+      widget.commande.appartements,
+      key: (item) => item.id,
+      value: (item) => equipe.appartementIds.contains(item.id),
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Affecter des appartements à ${equipe.nom}'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: widget.commande.appartements.map((appartement) {
+                    String equipeAffectation = _trouverEquipeAffectation(appartement.id);
+                    bool isAssignedToAnotherTeam = equipeAffectation.isNotEmpty && equipeAffectation != equipe.nom;
+
+                    return CheckboxListTile(
+                      title: Text('Appartement ${appartement.numero}' + (isAssignedToAnotherTeam ? ' (Affecté à $equipeAffectation)' : '')),
+                      value: selectedAppartements[appartement.id],
+                      onChanged: isAssignedToAnotherTeam ? null : (bool? value) {
+                        setState(() {
+                          selectedAppartements[appartement.id] = value!;
+                          if (value) {
+                            // Supprimer l'appartement des autres équipes
+                            widget.commande.equipes.forEach((otherEquipe) {
+                              if (otherEquipe.nom != equipe.nom) {
+                                otherEquipe.appartementIds.remove(appartement.id);
+                              }
+                            });
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Annuler'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text('Enregistrer'),
+                  onPressed: () {
+                    _applyAppartementSelection(selectedAppartements, equipe);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _trouverEquipeAffectation(String appartementId) {
+    for (var equipe in widget.commande.equipes) {
+      if (equipe.appartementIds.contains(appartementId)) {
+        return equipe.nom;
+      }
+    }
+    return '';
+  }
+  void _applyAppartementSelection(Map<String, bool> selectedAppartements, Equipe equipe) {
+    setState(() {
+      equipe.appartementIds = selectedAppartements.entries
+          .where((entry) => entry.value)
+          .map((entry) => entry.key)
+          .toList();
+      _updateCommande();
+    });
+  }
+
+
+  void _deleteEquipe(Equipe equipe) {
+    setState(() {
+      widget.commande.equipes.removeWhere((e) => e.nom == equipe.nom);
+      _updateCommande();
+    });
+    Navigator.of(context).pop();
+  }
+
+
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Validation du Ménage'),
         actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.group),
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => CreerEquipePage(),
-              ));
+          PopupMenuButton<String>(
+            onSelected: (String result) {
+              switch (result) {
+                case 'Modifier':
+                // Logique pour modifier la commande
+                  break;
+                case 'Supprimer':
+                  _showDeleteConfirmationDialog();
+                  break;
+              }
             },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'Modifier',
+                child: Text('Modifier'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'Supprimer',
+                child: Text('Supprimer'),
+              ),
+            ],
           ),
         ],
       ),
       body: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
-              onPressed: () {
-                // Logique pour créer une nouvelle équipe
-              },
-              child: Text('Créer une Équipe'),
-            ),
+        children: [
+          ElevatedButton(
+            onPressed: _ajouterEquipe,
+            child: Text('Ajouter une équipe'),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: widget.commande.appartements.length,
-              itemBuilder: (context, index) {
-                Appartement appartement = widget.commande.appartements[index];
-                return Card(
-                  color: _getCardColor(appartement),
-                  child: ListTile(
-                    title: Text('Appartement ${appartement.numero}'),
-                    subtitle: Text('État : ${appartement.etatValidation.isNotEmpty ? appartement.etatValidation : "Non validé"}'),
-                    onTap: () => _afficherOptionsValidation(appartement),
+            child: ListView(
+              children: [
+                ExpansionTile(
+                  title: Row(
+                    children: [
+                      Icon(Icons.calendar_today),
+                      SizedBox(width: 8),
+                      Text('Commande - ${DateFormat('dd/MM/yyyy').format(widget.commande.dateCommande)}'),
+                      SizedBox(width: 8),
+                      Icon(Icons.apartment),
+                      Text(' (${widget.commande.appartements.length})'),
+                    ],
                   ),
-                );
-              },
+                  children: widget.commande.appartements.map((appartement) {
+                    return ListTile(
+                      title: Text('Appartement ${appartement.numero}'),
+                      subtitle: Text('État : ${appartement.etatValidation.isNotEmpty ? appartement.etatValidation : "Non validé"}'),
+                    );
+                  }).toList(),
+                ),
+                ...widget.commande.equipes.map((equipe) {
+                  return ExpansionTile(
+                    title: Text(equipe.nom),
+                    trailing: ElevatedButton(
+                      onPressed: () => _showTeamOptions(equipe),
+                      child: Text('Modifier', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        primary: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    children: equipe.appartementIds.map((id) {
+                      Appartement appartement = widget.commande.appartements.firstWhere((a) => a.id == id);
+                      return Card(
+                        color: _getCardColor(appartement),
+                        child: ListTile(
+                          title: Text('Appartement ${appartement.numero}'),
+                          subtitle: Text('État : ${appartement.etatValidation.isNotEmpty ? appartement.etatValidation : "Non validé"}'),
+                          onTap: () => _afficherOptionsValidation(appartement),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+
+  void _openCommandEditPage() {
+    if (residence != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SelectionAppartementPage(
+            entrepriseId: widget.commande.entrepriseId,
+            residence: residence!,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur: Résidence non chargée')),
+      );
+    }
+  }
+
+
+  void _showDeleteConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmer la suppression'),
+          content: Text('Voulez-vous vraiment supprimer cette commande ?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Supprimer'),
+              onPressed: () async {
+                await _deleteCommande();
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context).pop(); // Retourne à l'écran précédent
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteCommande() async {
+    try {
+      await _firestore.collection('commandes').doc(widget.commande.id).delete();
+      // Afficher un message de succès ou naviguer vers un autre écran si nécessaire
+    } catch (e) {
+      // Gérer l'erreur ici, par exemple afficher un message d'erreur
+    }
+  }
 }
+
+

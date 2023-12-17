@@ -2,7 +2,7 @@ class Equipe {
   String nom;
   List<String> appartementIds;
 
-  Equipe({required this.nom, required this.appartementIds, required List<dynamic> appartements});
+  Equipe({required this.nom, required this.appartementIds, required List appartements});
 
   factory Equipe.fromMap(Map<String, dynamic> map) {
     return Equipe(

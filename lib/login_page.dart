@@ -67,27 +67,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _loginDemo(BuildContext context) async {
-    // Connectez-vous directement avec les identifiants du compte démo
-    String demoPhoneNumber = "+330767260279"; // Numéro de test
-    String demoSmsCode = "123456"; // Code SMS de test
-
-    try {
-      // Simuler la connexion avec les identifiants de test
-      final AuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: 'test-verification-id', // Un ID de vérification fictif
-        smsCode: demoSmsCode,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => MainScreen(entrepriseId: '',)),
-      );
-    } catch (e) {
-      _showSnackBar(context, "Erreur de connexion démo: ${e.toString()}");
-    }
-  }
-
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -123,10 +102,14 @@ class _LoginPageState extends State<LoginPage> {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () => _loginDemo(context),
-                child: Text('Connexion Démo'),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => RegisterPage()),
+                  );
+                },
+                child: Text('Inscription'),
                 style: ElevatedButton.styleFrom(
-                  primary: Colors.blueAccent,
+                  primary: Colors.green,
                   onPrimary: Colors.white,
                 ),
               ),

@@ -122,7 +122,7 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
       dateCommande: widget.dateCommande,
       appartements: widget.appartementsSelectionnes,
       detailsAppartements: Map<String, Map<String, dynamic>>.from(appartementDetailsFormatted),
-      entrepriseId: widget.entrepriseId, equipes: [],
+      entrepriseId: widget.entrepriseId, equipes: [], validation: {},
     );
 
     try {

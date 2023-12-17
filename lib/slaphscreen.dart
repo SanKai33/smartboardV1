@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:smartboard/login_page.dart';
- // Remplacez par le widget de votre page principale
+import 'main_screen.dart';
+
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -14,8 +14,14 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Timer(Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => LoginPage()));
+      _navigateToMainScreen();
     });
+  }
+
+  void _navigateToMainScreen() {
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => MainScreen(entrepriseId: 'BcKqAcjOPuRndQL5XIHNLsu0UW33',))
+    );
   }
 
   @override
@@ -25,9 +31,11 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Image.asset('assets/images/icon.png'), // Remplacez par votre logo
+            Image.asset('assets/images/icon.png'), // Votre logo
             SizedBox(height: 20),
-            //Text("Bienvenue dans l'Application", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            CircularProgressIndicator(), // Un indicateur de chargement
+            SizedBox(height: 20),
+            Text("Chargement...", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

@@ -87,6 +87,7 @@ flutter {
 dependencies {
 
     apply plugin: 'com.google.gms.google-services'
+    implementation 'com.google.firebase:firebase-appcheck-debug:17.1.1'
 
 
 
