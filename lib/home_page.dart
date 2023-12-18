@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smartboard/creer_commande.dart';
 import 'package:smartboard/validation_menage_page.dart';
+import 'historique_commande_page.dart';
 import 'messagerie.dart';
 import 'models/commande.dart';
 import 'models/entreprise.dart';
@@ -140,16 +141,19 @@ class CommandesEnCoursWidget extends StatelessWidget {
 class CommandesPasseesWidget extends StatelessWidget {
   final String entrepriseId;
 
+
   CommandesPasseesWidget({required this.entrepriseId});
 
   @override
   Widget build(BuildContext context) {
+    DateTime now = DateTime.now();
+    DateTime startOfDay = DateTime(now.year, now.month, now.day);
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('entreprise')
-          .doc(entrepriseId)
           .collection('commandes')
-          .where('statut', isEqualTo: 'passée')
+          .where('entrepriseId', isEqualTo: entrepriseId)
+          .where('dateCommande', isLessThan: startOfDay)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -168,7 +172,11 @@ class CommandesPasseesWidget extends StatelessWidget {
             title: Text(commande.nomResidence),
             subtitle: Text(DateFormat('yyyy-MM-dd – kk:mm').format(commande.dateCommande.toLocal())),
             onTap: () {
-              // Ajoutez ici la logique de navigation si nécessaire
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => HistoriqueCommandePage(commande: commande),
+                ),
+              );
             },
           )).toList(),
         );

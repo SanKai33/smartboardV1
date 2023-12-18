@@ -148,7 +148,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
       } else if (details.etatValidation != choix) {
         // Si ménage/contrôle validé, mettre à jour l'état et marquer le ménage comme effectué si nécessaire
         details.etatValidation = choix;
-        details.menageEffectue = choix == 'Ménage validé';
+        // Marquer comme effectué si le ménage ou le contrôle est validé
+        details.menageEffectue = choix == 'Ménage validé' || choix == 'Contrôle validé';
       } else {
         // Si l'utilisateur clique à nouveau sur la même option, réinitialiser l'état
         details.etatValidation = '';
@@ -306,10 +307,25 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     });
     Navigator.of(context).pop();
   }
+  bool _peutFinaliserCommande() {
+    return widget.commande.detailsAppartements.values
+        .every((details) => details.etatValidation == 'Contrôle validé');
+  }
 
 
 
+  void _finaliserCommande() async {
+    await _firestore.collection('commandes').doc(widget.commande.id).update({
+      'statut': 'Finalisée'
+    });
 
+    // Afficher un message ou naviguer vers une autre page si nécessaire
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Commande finalisée avec succès')),
+    );
+
+    // Vous pouvez choisir de naviguer vers une autre page après la finalisation
+  }
 
 
   @override
@@ -365,6 +381,11 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
               ),
             ],
           ),
+
+
+
+
+
           Expanded(
             child: ListView(
               children: [
