@@ -17,3 +17,24 @@
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+exports.envoyerNotificationPersonnelle = functions.firestore
+    .document('userNotifications/{notificationId}')
+    .onCreate((snapshot, context) => {
+        const data = snapshot.data();
+
+        const payload = {
+            notification: {
+                title: 'Notification de Ménage',
+                body: data.message
+            },
+            token: data.token // Token FCM de l'utilisateur
+        };
+
+        return admin.messaging().send(payload);
+    });
+
+

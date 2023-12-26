@@ -5,14 +5,14 @@ class Residence {
   String nom;
   String adresse;
   String entrepriseId;
-  String imageUrl;  // Champ pour l'URL de l'image
+  String imageUrl;
 
   Residence({
     required this.id,
     required this.nom,
     required this.adresse,
     required this.entrepriseId,
-    this.imageUrl = '',  // Initialisation par défaut de l'URL de l'image
+    this.imageUrl = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -20,7 +20,7 @@ class Residence {
       'nom': nom,
       'adresse': adresse,
       'entrepriseId': entrepriseId,
-      'imageUrl': imageUrl,  // Inclusion de l'URL de l'image
+      'imageUrl': imageUrl,
     };
   }
 
@@ -31,7 +31,7 @@ class Residence {
       nom: data['nom'] ?? '',
       adresse: data['adresse'] ?? '',
       entrepriseId: data['entrepriseId'] ?? '',
-      imageUrl: data['imageUrl'] ?? '',  // Récupération de l'URL de l'image
+      imageUrl: data['imageUrl'] ?? '',
     );
   }
 }

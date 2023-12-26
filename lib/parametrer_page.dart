@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:smartboard/selectScreenMap.dart';
 import 'models/appartement.dart';
 import 'models/residence.dart';
 import 'residences_page.dart';
@@ -19,19 +20,43 @@ class ParametrerPage extends StatefulWidget {
 
 class _ParametrerPageState extends State<ParametrerPage> {
   final TextEditingController _nomResidenceController = TextEditingController();
+  final TextEditingController _adresseResidenceController = TextEditingController();
   List<Appartement> appartements = [];
   bool isLoading = true;
   File? _image;
   final picker = ImagePicker();
 
+
+
   @override
   void initState() {
     super.initState();
     _nomResidenceController.text = widget.residence?.nom ?? '';
+    _adresseResidenceController.text = widget.residence?.adresse ?? '';
     if (widget.residence != null) {
       _loadAppartements();
     } else {
       isLoading = false;
+    }
+  }
+
+  void _handleMenuSelection(String value) async {
+    switch (value) {
+      case 'delete':
+        _supprimerResidence();
+        break;
+    // Autres cas si nécessaire...
+    }
+  }
+
+  void _supprimerResidence() async {
+    if (widget.residence?.id != null) {
+      await FirebaseFirestore.instance.collection('residences').doc(widget.residence!.id).delete();
+      // Supprimer également tous les appartements associés à cette résidence si nécessaire
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Résidence supprimée')));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ResidencesPage(entrepriseId: widget.entrepriseId)));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la suppression')));
     }
   }
 
@@ -92,7 +117,7 @@ class _ParametrerPageState extends State<ParametrerPage> {
     final newAppartement = Appartement(
       id: FirebaseFirestore.instance.collection('appartements').doc().id,
       numero: 'Numéro ${appartements.length + 1}',
-      batiment: 'Bâtiment ${appartements.length + 1}',
+      batiment: '',
       typologie: 'T1',
       nombrePersonnes: 1,
       residenceId: widget.residence?.id ?? '',
@@ -199,11 +224,35 @@ class _ParametrerPageState extends State<ParametrerPage> {
     );
   }
 
+  void _ouvrirSelectionAdresse() async {
+    // Remplacez 'SelectAddressScreen' par le nom de votre écran de sélection d'adresse
+    final selectedAddress = await Navigator.push(context, MaterialPageRoute(builder: (context) => SelectAddressScreen()));
+    if (selectedAddress != null) {
+      _adresseResidenceController.text = selectedAddress;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
+    var screenSize = MediaQuery.of(context).size;
+    bool isLargeScreen = screenSize.width > 600;
+
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Paramétrer Résidence'),
+        actions: <Widget>[
+          PopupMenuButton<String>(
+            onSelected: _handleMenuSelection,
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Text('Supprimer'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -214,41 +263,43 @@ class _ParametrerPageState extends State<ParametrerPage> {
               decoration: InputDecoration(
                 labelText: 'Nom de la Résidence',
                 border: OutlineInputBorder(),
+
               ),
             ),
+          ),
+
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Row(
+              children: [
+                Icon(Icons.apartment, color: Theme.of(context).primaryColor), // Icône d'appartements
+                SizedBox(width: 8), // Espace entre l'icône et le texte
+                Text('Nombre d\'appartements: ${appartements.length}', style: TextStyle(fontSize: 16)),
+
+
+              ],
+            ),
+          ),
+
+          // Remplacez 'adresseResidence' par la variable contenant l'adresse réelle
+          SizedBox(height: 10),
+          TextField(
+            controller: _adresseResidenceController,
+            decoration: InputDecoration(
+              labelText: 'Adresse de la Résidence',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: _ouvrirSelectionAdresse,
+            child: Text('Sélectionner Adresse'),
           ),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 children: [
                   SizedBox(height: 8.0),
-                  _image == null
-                      ? Container(
-                    width: 150.0, // Taille de la vue circulaire
-                    height: 150.0, // Taille de la vue circulaire
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.photo_size_select_actual, size: 100.0),
-                  )
-                      : ClipOval(
-                    child: Container(
-                      width: 150.0, // Taille de la vue circulaire
-                      height: 150.0, // Taille de la vue circulaire
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          fit: BoxFit.cover,
-                          image: FileImage(_image!),
-                        ),
-                      ),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: getImage,
-                    icon: Icon(Icons.camera),
-                    label: Text('Sélectionner une Image'),
-                  ),
                   ElevatedButton(
                     onPressed: _ajouterAppartement,
                     child: Text('Ajouter Appartement'),
@@ -287,6 +338,29 @@ class _ParametrerPageState extends State<ParametrerPage> {
       },
     );
   }
+}
+
+List<Appartement> appartements = [];
+
+Widget _buildTableLayout() {
+  return DataTable(
+    columns: const [
+      DataColumn(label: Text('Numéro')),
+      DataColumn(label: Text('Bâtiment')),
+      DataColumn(label: Text('Typologie')),
+      DataColumn(label: Text('Nombre de personnes')),
+      // Ajoutez plus de colonnes si nécessaire
+    ],
+    rows: appartements.map((appartement) {
+      return DataRow(cells: [
+        DataCell(Text(appartement.numero)),
+        DataCell(Text(appartement.batiment)),
+        DataCell(Text(appartement.typologie)),
+        DataCell(Text(appartement.nombrePersonnes.toString())),
+        // Ajoutez plus de cellules si nécessaire
+      ]);
+    }).toList(),
+  );
 }
 
 

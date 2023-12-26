@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyAzWdKPSHSi_Eies7T6NP8u-X5dKvMX9Kc</string>
+	<key>GCM_SENDER_ID</key>
+	<string>869187566575</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.smartboard1.app</string>
+	<key>PROJECT_ID</key>
+	<string>smartboard-d1392</string>
+	<key>STORAGE_BUCKET</key>
+	<string>smartboard-d1392.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:869187566575:ios:931b8da4b3254d0f43141a</string>
+	<key>DATABASE_URL</key>
+	<string>https://smartboard-d1392-default-rtdb.firebaseio.com</string>
+</dict>
+</plist>

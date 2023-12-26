@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'calendar_page.dart';
@@ -24,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
     _widgetOptions = [
       HomePage(entrepriseId: widget.entrepriseId),
       CalendarPage(),
-      ResidencesPage(entrepriseId: widget.entrepriseId), // Utilisation de l'entrepriseId du widget MainScreen
+      ResidencesPage(entrepriseId: widget.entrepriseId),
       NotificationsPage(entrepriseId:widget.entrepriseId),
       PersonnelPage(entrepriseId: widget.entrepriseId,),
     ];
@@ -33,17 +34,73 @@ class _MainScreenState extends State<MainScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      if (kIsWeb) {
+        Navigator.of(context).pop(); // Ferme le menu Drawer sur PC après la sélection
+      }
     });
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+          ),
+          ListTile(
+            leading: Icon(Icons.home),
+            title: Text('Accueil'),
+            onTap: () => _onItemTapped(0),
+          ),
+          ListTile(
+            leading: Icon(Icons.calendar_today),
+            title: Text('Calendrier'),
+            onTap: () => _onItemTapped(1),
+          ),
+          ListTile(
+            leading: Icon(Icons.apartment),
+            title: Text('Résidences'),
+            onTap: () => _onItemTapped(2),
+          ),
+          ListTile(
+            leading: Icon(Icons.notifications),
+            title: Text('Notifications'),
+            onTap: () => _onItemTapped(3),
+          ),
+          ListTile(
+            leading: Icon(Icons.person),
+            title: Text('Personnel'),
+            onTap: () => _onItemTapped(4),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: kIsWeb ? AppBar(
+        title: Text('Votre Application'),
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            );
+          },
+        ),
+      ) : null,
+      drawer: kIsWeb ? _buildDrawer() : null,
       body: IndexedStack(
         index: _selectedIndex,
         children: _widgetOptions,
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: !kIsWeb ? BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -69,9 +126,8 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.grey,
-        // Utilisez la couleur que vous préférez
         onTap: _onItemTapped,
-      ),
+      ) : null,
     );
   }
 }

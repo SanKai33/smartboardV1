@@ -22,10 +22,28 @@ class PersonnelPage extends StatelessWidget {
           ),
           title: Text('Gestion du Personnel'),
         ),
-        body: TabBarView(
+        body: Stack(
           children: [
-            PersonnelNettoyageWidget(entrepriseId: entrepriseId),
-            ControleReceptionWidget(entrepriseId: entrepriseId),
+            Opacity(
+              opacity: 0.3,
+              child: TabBarView(
+                children: [
+                  PersonnelNettoyageWidget(entrepriseId: entrepriseId),
+                  ControleReceptionWidget(entrepriseId: entrepriseId),
+                ],
+              ),
+            ),
+            Center(
+              child: Text(
+                'La gestion du personnel sera disponible dans la prochaine mise à jour.',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -43,6 +61,8 @@ class PersonnelPage extends StatelessWidget {
     );
   }
 }
+
+
 
 class PersonnelNettoyageWidget extends StatelessWidget {
   final String entrepriseId;

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smartboard/creer_commande.dart';
@@ -28,11 +29,11 @@ class HomePage extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: !kIsWeb ? AppBar(
           title: Row(
             children: [
               CircleAvatar(
-                backgroundImage: NetworkImage('https://via.placeholder.com/150'),
+                backgroundImage: AssetImage('assets/images/icon.png'),
               ),
               SizedBox(width: 10),
               FutureBuilder<String>(
@@ -51,37 +52,71 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        body: Column(
+        ) : null,
+        body: kIsWeb ? Column(
           children: [
-            TabBar(
-              tabs: [
-                Tab(text: 'Commandes en cours'),
-                Tab(text: 'Commandes passées'),
-              ],
+            Padding(
+              padding: const EdgeInsets.only(top: 10.0, right: 10.0),
+              child: Align(
+                alignment: Alignment.topRight,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CreerCommande(entrepriseId: entrepriseId)),
+                  ),
+                  child: Text(
+                    'Nouvelle Commande',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(primary: Colors.black),
+                ),
+              ),
             ),
             Expanded(
-              child: TabBarView(
-                children: [
-                  CommandesEnCoursWidget(entrepriseId: entrepriseId),
-                  CommandesPasseesWidget(entrepriseId: entrepriseId),
-                ],
+              child: CommandesEnCoursWidget(entrepriseId: entrepriseId),
+            ),
+          ],
+        ) : Stack(
+          children: [
+            Column(
+              children: [
+                TabBar(
+                  tabs: [
+                    Tab(text: 'Commandes en cours'),
+                    Tab(text: 'Commandes passées'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      CommandesEnCoursWidget(entrepriseId: entrepriseId),
+                      CommandesPasseesWidget(entrepriseId: entrepriseId),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Positioned(
+              bottom: 20,
+              right: 20,
+              child: FloatingActionButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreerCommande(entrepriseId: entrepriseId))),
+                child: Icon(Icons.add),
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
               ),
             ),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreerCommande(entrepriseId: entrepriseId))),
-          child: Icon(Icons.add),
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
         ),
       ),
     );
   }
 }
 
-class CommandesEnCoursWidget extends StatelessWidget {
+
+
+
+  class CommandesEnCoursWidget extends StatelessWidget {
   final String entrepriseId;
 
   CommandesEnCoursWidget({required this.entrepriseId});
@@ -141,7 +176,6 @@ class CommandesEnCoursWidget extends StatelessWidget {
 class CommandesPasseesWidget extends StatelessWidget {
   final String entrepriseId;
 
-
   CommandesPasseesWidget({required this.entrepriseId});
 
   @override
@@ -157,7 +191,7 @@ class CommandesPasseesWidget extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Text('Erreur lors du chargement des commandes');
+          return Center(child: Text('Erreur lors du chargement des commandes'));
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -168,16 +202,21 @@ class CommandesPasseesWidget extends StatelessWidget {
             .toList();
 
         return ListView(
-          children: commandes.map((commande) => ListTile(
-            title: Text(commande.nomResidence),
-            subtitle: Text(DateFormat('yyyy-MM-dd – kk:mm').format(commande.dateCommande.toLocal())),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => HistoriqueCommandePage(commande: commande),
-                ),
-              );
-            },
+          children: commandes.map((commande) => Card(
+            elevation: 4,
+            margin: EdgeInsets.all(8),
+            color: Colors.white, // Couleur bleu clair pour la carte
+            child: ListTile(
+              title: Text(commande.nomResidence),
+              subtitle: Text(DateFormat('yyyy-MM-dd – kk:mm').format(commande.dateCommande.toLocal())),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => HistoriqueCommandePage(commande: commande),
+                  ),
+                );
+              },
+            ),
           )).toList(),
         );
       },
