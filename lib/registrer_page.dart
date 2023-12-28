@@ -1,8 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'models/entreprise.dart'; // Assurez-vous d'importer le modèle Entreprise
-import 'main_screen.dart'; // Page d'accueil ou de redirection après l'enregistrement
+import 'package:firebase_auth/firebase_auth.dart';
+import 'login_page.dart'; // Assurez-vous que vous avez cette page pour la connexion
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -10,89 +8,94 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController nomController = TextEditingController();
-  final TextEditingController prenomController = TextEditingController();
-  String selectedType = 'entreprise'; // 'entreprise' ou 'personnel'
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _formKey = GlobalKey<FormState>();
 
-  Future<void> _registerEntreprise() async {
-    try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
-      );
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
-      Entreprise nouvelleEntreprise = Entreprise(
-        id: userCredential.user!.uid,
-        nom: nomController.text,
-        email: emailController.text,
-      );
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-      await _firestore.collection('entreprise').doc(nouvelleEntreprise.id).set(nouvelleEntreprise.toMap());
-
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => MainScreen(entrepriseId: nouvelleEntreprise.id)));
-    } on FirebaseAuthException catch (e) {
-      // Gérer les erreurs d'authentification ici
+  Future<void> _register() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+        // Compte créé avec succès, vous pouvez rediriger l'utilisateur vers la page de connexion ou de profil
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => LoginPage()));
+      } on FirebaseAuthException catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorDialog(e.message ?? "Une erreur s'est produite.");
+      }
     }
   }
 
-  // Ici, vous pouvez ajouter une fonction similaire pour enregistrer le personnel de nettoyage
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Erreur'),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Ok'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+          )
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Enregistrer un compte'),
+        title: Text('Créer un compte'),
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            DropdownButtonFormField<String>(
-              value: selectedType,
-              onChanged: (newValue) => setState(() => selectedType = newValue!),
-              items: ['entreprise', 'personnel']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ),
-            if (selectedType == 'entreprise')
-              TextField(
-                controller: nomController,
-                decoration: InputDecoration(labelText: 'Nom de l\'entreprise'),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Form(
+        key: _formKey,
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: 'Adresse e-mail'),
+                validator: (value) => value != null && !value.contains('@') ? "Entrez une adresse e-mail valide" : null,
+                keyboardType: TextInputType.emailAddress,
               ),
-            if (selectedType == 'personnel') ...[
-              TextField(
-                controller: nomController,
-                decoration: InputDecoration(labelText: 'Nom'),
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(labelText: 'Mot de passe'),
+                obscureText: true,
+                validator: (value) => value != null && value.length < 6 ? "Le mot de passe doit contenir au moins 6 caractères" : null,
               ),
-              TextField(
-                controller: prenomController,
-                decoration: InputDecoration(labelText: 'Prénom'),
+              SizedBox(height: 20),
+              ElevatedButton(
+                child: Text('Créer un compte'),
+                onPressed: _register,
               ),
             ],
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(labelText: 'Mot de passe'),
-              obscureText: true,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: selectedType == 'entreprise' ? _registerEntreprise : null, // Connectez la fonction appropriée ici
-              child: Text('Enregistrer'),
-            ),
-          ],
+          ),
         ),
       ),
     );

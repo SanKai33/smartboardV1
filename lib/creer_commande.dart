@@ -1,21 +1,15 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/selection_appartement_page.dart';
+import 'creer_commande_web.dart';
 import 'models/residence.dart';
 
 class CreerCommande extends StatelessWidget {
   final String entrepriseId;
 
   CreerCommande({required this.entrepriseId});
-
-  Future<int> _getNombreAppartements(String residenceId) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('appartements')
-        .where('residenceId', isEqualTo: residenceId)
-        .get();
-    return snapshot.docs.length;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,27 +51,37 @@ class CreerCommande extends StatelessWidget {
                 child: ListView(
                   children: snapshot.data!.docs.map((DocumentSnapshot document) {
                     Residence residence = Residence.fromFirestore(document);
-                    String imageUrl = residence.imageUrl;
                     return Card(
                       margin: EdgeInsets.all(8.0),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: residence.imageUrl.isNotEmpty
-                              ? NetworkImage(residence.imageUrl as String)  // Cast en String
-                              : AssetImage('path/to/placeholder_image.png') as ImageProvider,
+                          backgroundImage: NetworkImage(residence.imageUrl),
                           radius: 25,
                         ),
                         title: Text(residence.nom),
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SelectionAppartementPage(
-                                entrepriseId: entrepriseId,
-                                residence: residence,
+                          if (kIsWeb) { // Sur PC
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CombinedSelectionDetailsPage(
+                                  entrepriseId: entrepriseId,
+                                  residence: residence,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          } else {
+                            // Sur mobile, naviguer vers SelectionAppartementPage
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SelectionAppartementPage(
+                                  entrepriseId: entrepriseId,
+                                  residence: residence,
+                                ),
+                              ),
+                            );
+                          }
                         },
                       ),
                     );

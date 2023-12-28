@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'detail_commande.dart';  // Assurez-vous que ce chemin est correct
+import 'detail_commande.dart';
 import 'models/appartement.dart';
 import 'models/residence.dart';
 
@@ -112,7 +112,17 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
                 return Card(
                   child: CheckboxListTile(
                     title: Text('Appartement ${appartement.numero}'),
-                    subtitle: Text('Bâtiment: ${appartement.batiment}, Typologie: ${appartement.typologie}'),
+                    subtitle: Row(
+                      children: [
+                        Icon(Icons.apartment, size: 16),
+                        SizedBox(width: 5),
+                        Text(appartement.batiment),
+                        SizedBox(width: 10),
+                        Icon(Icons.category, size: 16),
+                        SizedBox(width: 5),
+                        Text(appartement.typologie),
+                      ],
+                    ),
                     value: selectedAppartements[appartement.id],
                     onChanged: (bool? value) {
                       setState(() {
