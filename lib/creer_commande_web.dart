@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'models/appartement.dart';
+import 'models/commande.dart';
 import 'models/detailAppartement.dart';
 import 'models/residence.dart';
 
@@ -22,7 +23,9 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
   Map<String, DetailsAppartement> appartementDetails = {};
   List<Appartement> appartements = [];
   bool isLoading = true;
-  Appartement? selectedAppartement;
+
+  // Déclaration de la variable noteControllers
+  Map<String, TextEditingController> noteControllers = {};
 
   @override
   void initState() {
@@ -31,20 +34,35 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
   }
 
   void _loadAppartements() async {
+    setState(() {
+      isLoading = true;
+    });
+
     try {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('appartements')
           .where('residenceId', isEqualTo: widget.residence.id)
           .get();
 
+      List<Appartement> loadedAppartements = querySnapshot.docs
+          .map((doc) => Appartement.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .toList();
+
+      Map<String, bool> loadedSelectedAppartements = {};
+      Map<String, DetailsAppartement> loadedAppartementDetails = {};
+      Map<String, TextEditingController> loadedNoteControllers = {};
+
+      for (var appart in loadedAppartements) {
+        loadedSelectedAppartements[appart.id] = false;
+        loadedAppartementDetails[appart.id] = DetailsAppartement();
+        loadedNoteControllers[appart.id] = TextEditingController(text: loadedAppartementDetails[appart.id]?.note);
+      }
+
       setState(() {
-        appartements = querySnapshot.docs
-            .map((doc) => Appartement.fromMap(doc.data() as Map<String, dynamic>, doc.id))
-            .toList();
-        selectedAppartements = {for (var appart in appartements) appart.id: false};
-        for (var appart in appartements) {
-          appartementDetails[appart.id] = DetailsAppartement();
-        }
+        appartements = loadedAppartements;
+        selectedAppartements = loadedSelectedAppartements;
+        appartementDetails = loadedAppartementDetails;
+        noteControllers = loadedNoteControllers;
         isLoading = false;
       });
     } catch (error) {
@@ -54,6 +72,43 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
       });
     }
   }
+  @override
+  void dispose() {
+    // S'assurer de disposer les TextEditingController pour éviter les fuites de mémoire
+    for (var controller in noteControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+
+  Future<void> _enregistrerCommande() async {
+    List<Appartement> appartementsSelectionnes = appartements.where((appart) => selectedAppartements[appart.id] ?? false).toList();
+    if (appartementsSelectionnes.isEmpty) {
+      // Gérer le cas où aucun appartement n'est sélectionné
+      return;
+    }
+
+    // Créer une instance de commande
+    Commande nouvelleCommande = Commande(
+      entrepriseId: widget.entrepriseId,
+      nomResidence: widget.residence.nom,
+      residenceId: widget.residence.id,
+      dateCommande: DateTime.now(),
+      appartements: appartementsSelectionnes,
+      detailsAppartements: appartementDetails, id: '', equipes: [], validation: {},
+      // Ajoutez d'autres champs si nécessaire
+    );
+
+    try {
+      // Enregistrer la nouvelle commande dans Firestore
+      await FirebaseFirestore.instance.collection('commandes').add(nouvelleCommande.toMap());
+      // Afficher un message de succès ou naviguer vers une autre page
+    } catch (e) {
+      // Gérer les erreurs de l'enregistrement
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -61,41 +116,71 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
       appBar: AppBar(
         title: Text('Sélection et Détails des Appartements'),
       ),
-      body: Row(
-        children: [
-          // Volet de gauche : Sélection des appartements
-          Expanded(
-            flex: 1,
-            child: isLoading
-                ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-              itemCount: appartements.length,
-              itemBuilder: (context, index) {
-                final appart = appartements[index];
-                return Card(
-                  child: CheckboxListTile(
-                    title: Text('Appartement ${appart.numero}'),
-                    subtitle: Text('Bâtiment: ${appart.batiment}, Typologie: ${appart.typologie}'),
-                    value: selectedAppartements[appart.id],
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: DataTable(
+            columns: const <DataColumn>[
+              DataColumn(label: Text('Appartement')),
+              DataColumn(label: Text('Prioritaire')),
+              DataColumn(label: Text('Note')),
+              DataColumn(label: Text('Type de Ménage')),
+            ],
+            rows: appartements.map<DataRow>((appart) {
+              final details = appartementDetails[appart.id] ??= DetailsAppartement();
+              final noteController = noteControllers[appart.id] ??= TextEditingController(text: details.note);
+
+              return DataRow(
+                cells: <DataCell>[
+                  DataCell(Text(appart.numero)),
+                  DataCell(Checkbox(
+                    value: details.prioritaire,
                     onChanged: (bool? value) {
                       setState(() {
-                        selectedAppartements[appart.id] = value!;
-                        selectedAppartement = appart;
+                        details.prioritaire = value!;
                       });
                     },
-                  ),
-                );
-              },
-            ),
+                  )),
+                  DataCell(Container(
+                    width: 200,
+                    child: TextField(
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Entrez une note'),
+                      controller: noteController,
+                      onSubmitted: (value) {
+                        details.note = value;
+                      },
+                    ),
+                  )),
+                  DataCell(DropdownButton<String>(
+                    value: details.typeMenage,
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        details.typeMenage = newValue!;
+                      });
+                    },
+                    items: <String>['Ménage', 'Recouche', 'Dégraissage', 'Fermeture']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                  )),
+                ],
+              );
+            }).toList(),
           ),
-          // Volet de droite : Détails de l'appartement sélectionné
-          Expanded(
-            flex: 2,
-            child: selectedAppartement == null
-                ? Center(child: Text('Sélectionnez un appartement pour afficher les détails'))
-                : DetailsView(appartement: selectedAppartement!),
-          ),
-        ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _enregistrerCommande,
+        child: Icon(Icons.check),
+        backgroundColor: Colors.green,
+        tooltip: 'Finaliser la commande',
       ),
     );
   }
