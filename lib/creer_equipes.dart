@@ -20,12 +20,12 @@ class _CreerEquipePageState extends State<CreerEquipePage> {
   @override
   void initState() {
     super.initState();
-    equipes.add(Equipe(nom: 'Équipe 1', appartements: [], appartementIds: []));
+    equipes.add(Equipe(nom: 'Équipe 1', appartements: [], appartementIds: [], personnelIds: []));
   }
 
   void _ajouterEquipe() {
     setState(() {
-      equipes.add(Equipe(nom: 'Équipe ${equipes.length + 1}', appartements: [], appartementIds: []));
+      equipes.add(Equipe(nom: 'Équipe ${equipes.length + 1}', appartements: [], appartementIds: [], personnelIds: []));
     });
   }
 

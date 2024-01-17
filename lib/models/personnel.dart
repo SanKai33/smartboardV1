@@ -5,6 +5,7 @@ class Personnel {
   String nom;
   String prenom;
   String email;
+  String telephone; // Ajout du champ téléphone
   String typeCompte;
   bool estSuperviseur;
   String? residenceAffectee;
@@ -15,6 +16,7 @@ class Personnel {
     required this.nom,
     required this.prenom,
     required this.email,
+    required this.telephone, // Ajout du champ téléphone
     required this.typeCompte,
     required this.estSuperviseur,
     this.residenceAffectee,
@@ -29,6 +31,7 @@ class Personnel {
       nom: data['nom'] ?? '',
       prenom: data['prenom'] ?? '',
       email: data['email'] ?? '',
+      telephone: data['telephone'] ?? '', // Récupération du champ téléphone
       typeCompte: data['typeCompte'] ?? '',
       estSuperviseur: data['estSuperviseur'] ?? false,
       residenceAffectee: data['residenceAffectee'],
@@ -41,6 +44,7 @@ class Personnel {
       'nom': nom,
       'prenom': prenom,
       'email': email,
+      'telephone': telephone, // Ajout du champ téléphone
       'typeCompte': typeCompte,
       'estSuperviseur': estSuperviseur,
       'residenceAffectee': residenceAffectee,

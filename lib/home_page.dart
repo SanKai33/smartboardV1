@@ -68,10 +68,35 @@ class HomePage extends StatelessWidget {
                     'Nouvelle Commande',
                     style: TextStyle(color: Colors.white),
                   ),
-                  style: ElevatedButton.styleFrom(primary: Colors.black),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
                 ),
               ),
             ),
+            // Bandeau de design "Commandes en cours"
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey[100], // Utilisez une couleur douce
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.5),
+                    spreadRadius: 2,
+                    blurRadius: 7,
+                    offset: Offset(0, 3), // changes position of shadow
+                  ),
+                ],
+              ),
+              child: Text(
+                'Commandes en cours',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey[800], // Couleur de texte élégante
+                ),
+              ),
+            ),
+
             Expanded(
               child: CommandesEnCoursWidget(entrepriseId: entrepriseId),
             ),

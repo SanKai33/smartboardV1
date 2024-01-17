@@ -85,7 +85,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: kIsWeb ? AppBar(
-        title: Text('Votre Application'),
+        title: Text('Acceuil'),
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(

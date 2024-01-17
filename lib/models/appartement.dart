@@ -5,6 +5,9 @@ class Appartement {
   String typologie;
   int nombrePersonnes;
   String residenceId;
+  int nombreLitsSimples;
+  int nombreLitsDoubles;
+  int nombreSallesDeBains;
 
   Appartement({
     required this.id,
@@ -13,6 +16,9 @@ class Appartement {
     required this.typologie,
     required this.nombrePersonnes,
     required this.residenceId,
+    required this.nombreLitsSimples,
+    required this.nombreLitsDoubles,
+    required this.nombreSallesDeBains,
   });
 
   factory Appartement.fromMap(Map<String, dynamic> map, String id) {
@@ -23,12 +29,11 @@ class Appartement {
       typologie: map['typologie'] ?? '',
       nombrePersonnes: map['nombrePersonnes'] ?? 0,
       residenceId: map['residenceId'] ?? '',
+      nombreLitsSimples: map['nombreLitsSimples'] ?? 0,
+      nombreLitsDoubles: map['nombreLitsDoubles'] ?? 0,
+      nombreSallesDeBains: map['nombreSallesDeBains'] ?? 0,
     );
   }
-
-
-
-
 
   Map<String, dynamic> toMap() {
     return {
@@ -38,6 +43,9 @@ class Appartement {
       'typologie': typologie,
       'nombrePersonnes': nombrePersonnes,
       'residenceId': residenceId,
+      'nombreLitsSimples': nombreLitsSimples,
+      'nombreLitsDoubles': nombreLitsDoubles,
+      'nombreSallesDeBains': nombreSallesDeBains,
     };
   }
 }

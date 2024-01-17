@@ -138,8 +138,7 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
             onPressed: _onSuivantPressed,
             child: Text('Suivant'),
             style: ElevatedButton.styleFrom(
-              primary: Theme.of(context).primaryColor,
-              onPrimary: Colors.white,
+              foregroundColor: Colors.white, backgroundColor: Theme.of(context).primaryColor,
             ),
           ),
         ],

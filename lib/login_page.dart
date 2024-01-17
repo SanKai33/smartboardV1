@@ -109,8 +109,7 @@ class _LoginPageState extends State<LoginPage> {
                 },
                 child: Text('Inscription'),
                 style: ElevatedButton.styleFrom(
-                  primary: Colors.green,
-                  onPrimary: Colors.white,
+                  foregroundColor: Colors.white, backgroundColor: Colors.green,
                 ),
               ),
             ],

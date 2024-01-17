@@ -7,12 +7,12 @@ class Commande {
   String id;
   String entrepriseId;
   String nomResidence;
-  String residenceId; // Ajout du champ residenceId
+  String residenceId;
   DateTime dateCommande;
   List<Appartement> appartements;
-  Map<String, DetailsAppartement> detailsAppartements; // Détails de chaque appartement
+  Map<String, DetailsAppartement> detailsAppartements;
   List<Equipe> equipes;
-  Map<String, String> validation; // Validation pour chaque appartement
+  Map<String, String> validation;
 
   Commande({
     required this.id,
@@ -23,7 +23,7 @@ class Commande {
     required this.appartements,
     required this.detailsAppartements,
     required this.equipes,
-    required this.validation,
+    required this.validation, required Map ordreAppartements,
   });
 
   factory Commande.fromMap(Map<String, dynamic> map, String documentId) {
@@ -36,9 +36,11 @@ class Commande {
       appartements: (map['appartements'] as List<dynamic>? ?? []).map((e) => Appartement.fromMap(e as Map<String, dynamic>, e['id'] ?? '')).toList(),
       detailsAppartements: (map['detailsAppartements'] as Map<String, dynamic>?)?.map((key, value) => MapEntry(key, DetailsAppartement.fromMap(value))) ?? {},
       equipes: (map['equipes'] as List<dynamic>? ?? []).map((e) => Equipe.fromMap(e as Map<String, dynamic>)).toList(),
-      validation: Map<String, String>.from(map['validation'] ?? {}),
+      validation: Map<String, String>.from(map['validation'] ?? {}), ordreAppartements: {},
     );
   }
+
+
 
   Map<String, dynamic> toMap() {
     return {

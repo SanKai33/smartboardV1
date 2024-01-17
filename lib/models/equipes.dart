@@ -1,13 +1,19 @@
 class Equipe {
   String nom;
   List<String> appartementIds;
+  List<String> personnelIds;
 
-  Equipe({required this.nom, required this.appartementIds, required List appartements});
+  Equipe({
+    required this.nom,
+    required this.appartementIds,
+    required this.personnelIds, required List<dynamic> appartements,
+  });
 
   factory Equipe.fromMap(Map<String, dynamic> map) {
     return Equipe(
       nom: map['nom'] ?? '',
-      appartementIds: List<String>.from(map['appartementIds'] as List<dynamic> ?? []), appartements: [],
+      appartementIds: map['appartementIds'] != null ? List<String>.from(map['appartementIds']) : [],
+      personnelIds: map['personnelIds'] != null ? List<String>.from(map['personnelIds']) : [], appartements: [],
     );
   }
 
@@ -15,6 +21,7 @@ class Equipe {
     return {
       'nom': nom,
       'appartementIds': appartementIds,
+      'personnelIds': personnelIds,
     };
   }
 }
