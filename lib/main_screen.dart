@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:smartboard/presence_page.dart';
 import 'home_page.dart';
 import 'calendar_page.dart';
 import 'residences_page.dart';
@@ -7,12 +8,12 @@ import 'notifications_page.dart';
 import 'personnel_page.dart';
 
 class MainScreen extends StatefulWidget {
-  final String entrepriseId;
+final String entrepriseId;
 
-  MainScreen({required this.entrepriseId});
+MainScreen({required this.entrepriseId});
 
-  @override
-  _MainScreenState createState() => _MainScreenState();
+@override
+_MainScreenState createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
@@ -27,17 +28,102 @@ class _MainScreenState extends State<MainScreen> {
       CalendarPage(),
       ResidencesPage(entrepriseId: widget.entrepriseId),
       NotificationsPage(entrepriseId:widget.entrepriseId),
-      PersonnelPage(entrepriseId: widget.entrepriseId,),
+      PersonnelPage(entrepriseId: widget.entrepriseId),
     ];
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      if (kIsWeb) {
-        Navigator.of(context).pop(); // Ferme le menu Drawer sur PC après la sélection
-      }
-    });
+    if (index == 5) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PresencePage()),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+        if (kIsWeb) {
+          Navigator.of(context).pop(); // Ferme le menu Drawer sur PC après la sélection
+        }
+      });
+    }
+  }
+
+  void _showMoreMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: Icon(Icons.qr_code),
+              title: Text('AffectationPrésence'),
+              onTap: () {
+                Navigator.pop(context);
+                // Naviguer vers la page Présence ou effectuer une action
+              },
+            ),
+            // Ajoutez ici d'autres éléments supplémentaires
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: kIsWeb ? AppBar(
+        title: Text('Acceuil'),
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            );
+          },
+        ),
+      ) : null,
+      drawer: kIsWeb ? _buildDrawer() : null,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
+      bottomNavigationBar: !kIsWeb ? BottomNavigationBar(
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Accueil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Calendrier',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.apartment),
+            label: 'Résidences',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: 'Notifications',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Personnel',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.more_horiz), // Icône pour le menu "Plus"
+            label: 'Plus',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.black,
+        unselectedItemColor:
+
+        Colors.grey,
+        onTap: _onItemTapped,
+      ) : null,
+    );
   }
 
   Drawer _buildDrawer() {
@@ -76,58 +162,15 @@ class _MainScreenState extends State<MainScreen> {
             title: Text('Personnel'),
             onTap: () => _onItemTapped(4),
           ),
-        ],
-      ),
-    );
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: kIsWeb ? AppBar(
-        title: Text('Acceuil'),
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: Icon(Icons.menu),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            );
-          },
-        ),
-      ) : null,
-      drawer: kIsWeb ? _buildDrawer() : null,
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: !kIsWeb ? BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Accueil',
+          ListTile(
+            leading: Icon(Icons.qr_code), // Icône pour la page Présence
+            title: Text('AffectationPrésence'),
+            onTap: () => _onItemTapped(5),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendrier',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.apartment),
-            label: 'Résidences',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notifications',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Personnel',
-          ),
+// Vous pouvez ajouter d'autres éléments dans ce tiroir
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-      ) : null,
+      ),
     );
   }
 }

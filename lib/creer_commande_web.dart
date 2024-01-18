@@ -176,7 +176,7 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
         appartements: appartements.where((a) => selectedAppartements[a.id] ?? false).toList(),
         detailsAppartements: detailsWithOrder,
         equipes: [], // Si vous avez des données d'équipe, ajoutez-les ici
-        validation: {}, ordreAppartements: {}, // Ajoutez les données de validation si nécessaire
+        validation: {}, ordreAppartements: {}, personnelIds: [], // Ajoutez les données de validation si nécessaire
       );
 
       // Enregistrez ou mettez à jour la commande dans Firestore

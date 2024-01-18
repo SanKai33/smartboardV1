@@ -111,7 +111,7 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
       detailsAppartements: appartementDetails,
       entrepriseId: widget.entrepriseId,
       equipes: [],
-      validation: {}, residenceId: '', ordreAppartements: {},
+      validation: {}, residenceId: '', ordreAppartements: {}, personnelIds: [],
     );
 
     try {

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
+//import 'package:share/share.dart';
 
 import 'package:smartboard/models/personnel.dart';
 
@@ -109,9 +110,6 @@ class _PersonnelPageState extends State<PersonnelPage> {
       'prenom': firstName,
       'telephone': phone,
       'entrepriseId': widget.entrepriseId,
-      'email': '', // Ajouter une valeur par défaut ou obtenir de l'utilisateur
-      'typeCompte': 'Agent Simple',
-      'estSuperviseur': false, // Définir une valeur par défaut
       // Ajouter d'autres champs requis par le modèle Personnel si nécessaire
     }).then((value) {
       Navigator.of(context).pop(); // Ferme la boîte de dialogue de création
@@ -122,6 +120,10 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _showSuccessDialog(BuildContext context, String agentId) {
+    final String message = "L'agent a été créé avec succès.\n"
+        "Identifiant: $agentId\n"
+        "Mot de passe par défaut: 123456";
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -130,13 +132,17 @@ class _PersonnelPageState extends State<PersonnelPage> {
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text('L\'agent a été créé avec succès.'),
-                Text('Identifiant: $agentId'),
-                Text('Mot de passe par défaut: 123456'),
+                Text(message),
               ],
             ),
           ),
           actions: <Widget>[
+            TextButton(
+              child: Text('Partager'),
+              onPressed: () {
+                //Share.share(message);
+              },
+            ),
             TextButton(
               child: Text('OK'),
               onPressed: () {

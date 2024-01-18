@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:smartboard/selection_appartement_page.dart';
+
 import 'Visualisation.dart';
 import 'models/appartement.dart';
 import 'models/commande.dart';
@@ -29,6 +29,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   String _fcmToken = '';
   Timer? _timer;
   Commande? _commande;
+
+
 
   @override
   void initState() {
@@ -576,8 +578,6 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
 
   @override
   Widget build(BuildContext context) {
-
-    //double avancement = _calculerAvancement();
     return Scaffold(
       appBar: AppBar(
         title: Text('Validation du Ménage'),
@@ -613,12 +613,10 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             children: [
               Padding(
                 padding: EdgeInsets.only(left: 60.0),
-
                 child: Row(
                   children: [
-                    _buildCustomProgressIndicator(), // Utilisez le nouveau widget ici
-                    SizedBox(width: 8), // Espace entre l'indicateur et le texte
-                    // ... autres éléments de la Row
+                    _buildCustomProgressIndicator(),
+                    SizedBox(width: 8),
                   ],
                 ),
               ),
@@ -627,6 +625,15 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                 child: ElevatedButton(
                   onPressed: _ajouterEquipe,
                   child: Text('Ajouter une équipe'),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    _showPersonnelSelectionDialog();
+                  },
+                  child: Text('Affecter Personnel'),
                 ),
               ),
             ],
@@ -783,6 +790,110 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   }
 
 
+  Future<void> _showPersonnelSelectionDialog() async {
+    Set<String> selectedPersonnelIds = Set<String>.from(widget.commande.personnelIds);
+    final List<Personnel> personnelList = await _fetchPersonnel();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Sélectionner le Personnel'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: personnelList.map((personnel) {
+                    return CheckboxListTile(
+                      title: Text('${personnel.prenom} ${personnel.nom}'),
+                      value: _isSelected(personnel, selectedPersonnelIds),
+                      onChanged: (bool? value) {
+                        if (value == true) {
+                          selectedPersonnelIds.add(personnel.id);
+                        } else {
+                          selectedPersonnelIds.remove(personnel.id);
+                        }
+                        setState(() {}); // Met à jour l'état local de la boîte de dialogue
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Annuler'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text('Valider'),
+                  onPressed: () {
+                    _updateCommandeWithSelectedPersonnel(selectedPersonnelIds);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  void _updateCommandeWithSelectedPersonnel(Set<String> selectedPersonnelIds) {
+    setState(() {
+      widget.commande.personnelIds = selectedPersonnelIds.toList();
+    });
+    // Mettez à jour la commande dans Firestore
+    FirebaseFirestore.instance.collection('commandes').doc(widget.commande.id).update({
+      'personnelIds': selectedPersonnelIds.toList(),
+    });
+  }
+
+  Future<List<Personnel>> _fetchPersonnel() async {
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    String entrepriseId = widget.commande.entrepriseId; // Utilisation de l'ID de l'entreprise depuis l'objet commande
+
+    try {
+      QuerySnapshot querySnapshot = await firestore
+          .collection('personnel')
+          .where('entrepriseId', isEqualTo: entrepriseId)
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => Personnel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print("Erreur lors de la récupération du personnel : $e");
+      return [];
+    }
+  }
+
+
+  Set<String> selectedPersonnelIds = Set<String>();
+
+  bool _isSelected(Personnel personnel, Set<String> selectedPersonnelIds) {
+    return selectedPersonnelIds.contains(personnel.id);
+  }
+
+  void _togglePersonnelSelection(Personnel personnel, bool isSelected) {
+    setState(() {
+      if (isSelected) {
+        selectedPersonnelIds.add(personnel.id);
+      } else {
+        selectedPersonnelIds.remove(personnel.id);
+      }
+    });
+  }
+
+
+
+
+
+
+
+
+
   void _visualiserCommande() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => VisualiserCommandePage(commande: widget.commande, commandeId: widget.commande.id,)),
@@ -827,5 +938,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     }
   }
 }
+
+
 
 
