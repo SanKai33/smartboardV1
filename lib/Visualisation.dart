@@ -114,55 +114,80 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
       appBar: AppBar(
         title: Text('Détails de la Commande'),
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('commandes').doc(widget.commandeId).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text("Erreur lors du chargement des données."));
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          Commande commande = Commande.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text('Résidence: ${commande.nomResidence}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('Date de la commande: ${DateFormat('dd/MM/yyyy').format(commande.dateCommande)}', style: TextStyle(fontSize: 16)),
-                  SizedBox(height: 10),
-                  Text('Nombre total d\'appartements: ${commande.appartements.length}', style: TextStyle(fontSize: 18)),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () async {
-                      _createPdf(commande);
-                    },
-                    child: Text('Extraire le PDF'),
+      body: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end, // Alignement à droite
+            children: [
+              Padding(
+                padding: EdgeInsets.all(10),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    // Logique pour extraire le PDF
+                    _createPdf(commande);
+                  },
+                  child: Text('Extraire le PDF', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
-                  SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Logique pour modifier la commande
-                      _navigateToCommandeEditPage(commande);
-                    },
-                    child: Text('Modifier la Commande'),
-                  ),
-                  SizedBox(height: 20),
-                  Center(child: buildDataTable(commande)),
-                  SizedBox(height: 20),
-                  Center(child: buildSummaryTable(commande)),
-                ],
+                ),
               ),
+              Padding(
+                padding: EdgeInsets.all(10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Logique pour modifier la commande
+                    _navigateToCommandeEditPage(commande);
+                  },
+                  child: Text('Modifier la Commande', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Expanded(
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('commandes').doc(widget.commandeId).snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text("Erreur lors du chargement des données."));
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                Commande commande = Commande.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text('Résidence: ${commande.nomResidence}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text('Date de la commande: ${DateFormat('dd/MM/yyyy').format(commande.dateCommande)}', style: TextStyle(fontSize: 16)),
+                        SizedBox(height: 10),
+                        Text('Nombre total d\'appartements: ${commande.appartements.length}', style: TextStyle(fontSize: 18)),
+                        SizedBox(height: 20),
+                        buildDataTable(commande),
+                        SizedBox(height: 20),
+                        buildSummaryTable(commande),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
+
 
   Widget buildDataTable(Commande commande) {
     return DataTable(

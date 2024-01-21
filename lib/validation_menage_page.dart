@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'Visualisation.dart';
+import 'affectation_personnel.dart';
 import 'models/appartement.dart';
 import 'models/commande.dart';
 import 'models/detailAppartement.dart';
@@ -608,35 +609,50 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
       ),
       body: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(left: 60.0),
-                child: Row(
-                  children: [
-                    _buildCustomProgressIndicator(),
-                    SizedBox(width: 8),
-                  ],
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+            child: Wrap(
+              spacing: 8, // Espacement horizontal entre les boutons
+              runSpacing: 8, // Espacement vertical entre les lignes
+              alignment: WrapAlignment.end, // Alignement des boutons à droite
+              children: [
+                ElevatedButton(
+                  onPressed: _visualiserCommande,
+                  child: Text('Visualiser la commande', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(10),
-                child: ElevatedButton(
+                ElevatedButton(
                   onPressed: _ajouterEquipe,
-                  child: Text('Ajouter une équipe'),
+                  child: Text('Ajouter une équipe', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(10),
-                child: ElevatedButton(
+                ElevatedButton(
                   onPressed: () {
-                    _showPersonnelSelectionDialog();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AffectationPersonnelPage()),
+                    );
                   },
-                  child: Text('Affecter Personnel'),
+                  child: Text('Affecter Personnel', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
 
@@ -647,10 +663,17 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             child: ListView(
 
               children: [
-              ElevatedButton(
-                onPressed: _visualiserCommande,
-                child: Text('Visualiser la commande'),
-            ),
+                Visibility(
+                visible: false, // Mettez ce paramètre à false pour rendre le bouton invisible
+                maintainSize: true, // Maintient la taille du bouton même s'il est invisible
+                maintainAnimation: true, // Maintient les animations
+                maintainState: true, // Maintient l'état du bouton
+                child: ElevatedButton(
+                  onPressed: _visualiserCommande,
+                  child: Text('Visualiser la commande'),
+                ),
+                ),
+
 
 
                 ExpansionTile(
@@ -717,16 +740,9 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                             : SizedBox(),
                       ],
                     ),
-                    trailing: ElevatedButton(
+                    trailing: IconButton(
+                      icon: Icon(Icons.edit, color: Colors.black),
                       onPressed: () => _showTeamOptions(equipe),
-                      child: Text('Modifier', style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
                     ),
                     children: equipe.appartementIds.map((id) {
                       Appartement appartement = widget.commande.appartements.firstWhere((a) => a.id == id);

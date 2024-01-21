@@ -8,12 +8,12 @@ import 'notifications_page.dart';
 import 'personnel_page.dart';
 
 class MainScreen extends StatefulWidget {
-final String entrepriseId;
+  final String entrepriseId;
 
-MainScreen({required this.entrepriseId});
+  MainScreen({required this.entrepriseId});
 
-@override
-_MainScreenState createState() => _MainScreenState();
+  @override
+  _MainScreenState createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
@@ -27,7 +27,7 @@ class _MainScreenState extends State<MainScreen> {
       HomePage(entrepriseId: widget.entrepriseId),
       CalendarPage(),
       ResidencesPage(entrepriseId: widget.entrepriseId),
-      NotificationsPage(entrepriseId:widget.entrepriseId),
+      NotificationsPage(entrepriseId: widget.entrepriseId),
       PersonnelPage(entrepriseId: widget.entrepriseId),
     ];
   }
@@ -48,49 +48,46 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  void _showMoreMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              leading: Icon(Icons.qr_code),
-              title: Text('AffectationPrésence'),
-              onTap: () {
-                Navigator.pop(context);
-                // Naviguer vers la page Présence ou effectuer une action
-              },
-            ),
-            // Ajoutez ici d'autres éléments supplémentaires
-          ],
-        );
-      },
+  Widget _buildWebMenuButton(String title, IconData icon, int index) {
+    return TextButton(
+      onPressed: () => _onItemTapped(index),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, size: 18),
+          SizedBox(width: 8),
+          Text(title),
+        ],
+      ),
+    );
+  }
+
+  AppBar _buildWebAppBar() {
+    return AppBar(
+      title: Text('Acceuil'),
+      actions: <Widget>[
+        _buildWebMenuButton('Accueil', Icons.home, 0),
+        _buildWebMenuButton('Calendrier', Icons.calendar_today, 1),
+        _buildWebMenuButton('Résidences', Icons.apartment, 2),
+        _buildWebMenuButton('Notifications', Icons.notifications, 3),
+        _buildWebMenuButton('Personnel', Icons.person, 4),
+        IconButton(
+          icon: Icon(Icons.qr_code),
+          onPressed: () => _onItemTapped(5),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: kIsWeb ? AppBar(
-        title: Text('Acceuil'),
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: Icon(Icons.menu),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            );
-          },
-        ),
-      ) : null,
-      drawer: kIsWeb ? _buildDrawer() : null,
+      appBar: kIsWeb ? _buildWebAppBar() : null,
       body: IndexedStack(
         index: _selectedIndex,
         children: _widgetOptions,
       ),
       bottomNavigationBar: !kIsWeb ? BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
+        items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Accueil',
@@ -112,65 +109,15 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Personnel',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz), // Icône pour le menu "Plus"
-            label: 'Plus',
+            icon: Icon(Icons.qr_code),
+            label: 'Présence',
           ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.black,
-        unselectedItemColor:
-
-        Colors.grey,
+        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
       ) : null,
-    );
-  }
-
-  Drawer _buildDrawer() {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: <Widget>[
-          DrawerHeader(
-            decoration: BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
-          ),
-          ListTile(
-            leading: Icon(Icons.home),
-            title: Text('Accueil'),
-            onTap: () => _onItemTapped(0),
-          ),
-          ListTile(
-            leading: Icon(Icons.calendar_today),
-            title: Text('Calendrier'),
-            onTap: () => _onItemTapped(1),
-          ),
-          ListTile(
-            leading: Icon(Icons.apartment),
-            title: Text('Résidences'),
-            onTap: () => _onItemTapped(2),
-          ),
-          ListTile(
-            leading: Icon(Icons.notifications),
-            title: Text('Notifications'),
-            onTap: () => _onItemTapped(3),
-          ),
-          ListTile(
-            leading: Icon(Icons.person),
-            title: Text('Personnel'),
-            onTap: () => _onItemTapped(4),
-          ),
-
-          ListTile(
-            leading: Icon(Icons.qr_code), // Icône pour la page Présence
-            title: Text('AffectationPrésence'),
-            onTap: () => _onItemTapped(5),
-          ),
-// Vous pouvez ajouter d'autres éléments dans ce tiroir
-        ],
-      ),
     );
   }
 }
