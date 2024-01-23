@@ -77,7 +77,7 @@ class CreerCommande extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => SelectionAppartementPage(
                                   entrepriseId: entrepriseId,
-                                  residence: residence,
+                                  residence: residence, agentId: '',
                                 ),
                               ),
                             );

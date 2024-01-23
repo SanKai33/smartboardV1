@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:smartboard/affectation_personnel.dart';
 import 'package:smartboard/models/personnel.dart';
 
 class PersonnelPage extends StatefulWidget {
@@ -19,41 +20,76 @@ class _PersonnelPageState extends State<PersonnelPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: searchController,
-          decoration: InputDecoration(
-            hintText: 'Rechercher par nom ou prénom',
-            suffixIcon: IconButton(
-              icon: Icon(Icons.clear),
-              onPressed: () {
-                searchController.clear();
-                setState(() {
-                  searchQuery = "";
-                });
-              },
+        title: Row(
+          children: <Widget>[
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300], // Fond gris pour la barre de recherche
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher par nom ou prénom',
+                    border: InputBorder.none,
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.clear),
+                      onPressed: () {
+                        searchController.clear();
+                        setState(() {
+                          searchQuery = "";
+                        });
+                      },
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                    });
+                  },
+                ),
+              ),
             ),
-          ),
-          onChanged: (value) {
-            setState(() {
-              searchQuery = value;
-            });
-          },
+            SizedBox(width: 10), // Espace entre la barre de recherche et les boutons
+            TextButton(
+              onPressed: () => _createNewAgent(context),
+              child: Text('Nouvel Agent', style: TextStyle(color: Colors.white)),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AffectationPage()),
+                );
+              },
+              child: Text('Affecter Personnel', style: TextStyle(color: Colors.white)),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+          ],
         ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => _createNewAgent(context),
-            child: Text('Nouvel Agent', style: TextStyle(color: Colors.white)),
-            style: TextButton.styleFrom(backgroundColor: Colors.black),
-          ),
-        ],
       ),
-      body: PersonnelNettoyageWidget(
-        entrepriseId: widget.entrepriseId,
-        searchQuery: searchQuery,
+      body: Padding(
+        padding: const EdgeInsets.only(top: 20.0),
+        child: PersonnelNettoyageWidget(
+          entrepriseId: widget.entrepriseId,
+          searchQuery: searchQuery,
+        ),
       ),
     );
   }
-
 
 
 
@@ -251,24 +287,28 @@ class PersonnelNettoyageWidget extends StatelessWidget {
   }
 
   void _showEditRoleDialog(BuildContext context, Personnel personnel) {
-    String selectedRole = personnel.typeCompte; // Utilisez le rôle actuel comme valeur par défaut
+    String selectedRole = personnel.typeCompte; // Assurez-vous que cette valeur est valide
+
+    List<String> roles = ['Agent Simple', 'Superviseur', 'Contrôleur']; // Liste des rôles
+    if (!roles.contains(selectedRole)) {
+      selectedRole = roles.first; // Définir une valeur par défaut si le rôle actuel n'est pas dans la liste
+    }
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder( // Utilisation de StatefulBuilder pour gérer l'état local du dialogue
+        return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
               title: Text('Modifier la Fonction'),
               content: DropdownButton<String>(
                 value: selectedRole,
                 onChanged: (String? newValue) {
-                  setState(() { // Mise à jour de l'état local du dialogue
+                  setState(() {
                     selectedRole = newValue!;
                   });
                 },
-                items: <String>['Agent Simple', 'Superviseur', 'Contrôleur']
-                    .map<DropdownMenuItem<String>>((String value) {
+                items: roles.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),

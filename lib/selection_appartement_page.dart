@@ -8,8 +8,9 @@ import 'models/residence.dart';
 class SelectionAppartementPage extends StatefulWidget {
   final String entrepriseId;
   final Residence residence;
+  final String agentId;
 
-  SelectionAppartementPage({required this.entrepriseId, required this.residence});
+  SelectionAppartementPage({required this.entrepriseId, required this.residence, required this.agentId});
 
   @override
   _SelectionAppartementPageState createState() => _SelectionAppartementPageState();
@@ -82,7 +83,7 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
           entrepriseId: widget.entrepriseId,
           residence: widget.residence,
           appartementsSelectionnes: selected,
-          dateCommande: selectedDate!,
+          dateCommande: selectedDate!, agentId: widget.agentId,
         ),
       ),
     );

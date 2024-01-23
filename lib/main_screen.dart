@@ -10,7 +10,7 @@ import 'personnel_page.dart';
 class MainScreen extends StatefulWidget {
   final String entrepriseId;
 
-  MainScreen({required this.entrepriseId});
+  MainScreen({required this.entrepriseId, required String agentId});
 
   @override
   _MainScreenState createState() => _MainScreenState();

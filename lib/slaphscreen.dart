@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:smartboard/login_page.dart';
 import 'main_screen.dart';
 
 
@@ -20,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToMainScreen() {
     Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => MainScreen(entrepriseId: 'BcKqAcjOPuRndQL5XIHNLsu0UW33',))
+        MaterialPageRoute(builder: (_) => LoginPage())
     );
   }
 

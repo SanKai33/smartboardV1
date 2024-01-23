@@ -11,6 +11,7 @@ class CommandeDetailsPage extends StatefulWidget {
   final DateTime dateCommande;
   final String entrepriseId;
   final Residence residence;
+  final String agentId;
 
   CommandeDetailsPage({
     Key? key,
@@ -18,6 +19,8 @@ class CommandeDetailsPage extends StatefulWidget {
     required this.dateCommande,
     required this.entrepriseId,
     required this.residence,
+    required this.agentId,
+
   }) : super(key: key);
 
   @override
@@ -127,7 +130,7 @@ class _CommandeDetailsPageState extends State<CommandeDetailsPage> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Commande enregistrée avec succès avec ID: ${docRef.id}')));
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => MainScreen(entrepriseId: widget.entrepriseId)),
+          MaterialPageRoute(builder: (context) => MainScreen(entrepriseId: widget.entrepriseId, agentId: widget.agentId,)),
               (Route<dynamic> route) => false,
         );
       }
