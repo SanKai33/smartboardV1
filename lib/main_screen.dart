@@ -41,9 +41,6 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       setState(() {
         _selectedIndex = index;
-        if (kIsWeb) {
-          Navigator.of(context).pop(); // Ferme le menu Drawer sur PC après la sélection
-        }
       });
     }
   }

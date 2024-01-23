@@ -640,7 +640,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => AffectationPersonnelPage()),
+                      MaterialPageRoute(builder: (context) => AffectationPage()),
                     );
                   },
                   child: Text('Affecter Personnel', style: TextStyle(color: Colors.white)),

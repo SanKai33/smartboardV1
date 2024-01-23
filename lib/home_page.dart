@@ -92,7 +92,7 @@ class HomePage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey[800], // Couleur de texte élégante
+                  color: Colors.white, // Couleur de texte élégante
                 ),
               ),
             ),
@@ -137,6 +137,7 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
 
 
 

@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
-//import 'package:share/share.dart';
-
 import 'package:smartboard/models/personnel.dart';
 
 class PersonnelPage extends StatefulWidget {
