@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:smartboard/models/entreprise.dart';
 import 'package:smartboard/presence_page.dart';
 import 'home_page.dart';
 import 'calendar_page.dart';

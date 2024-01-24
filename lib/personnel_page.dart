@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/affectation_personnel.dart';
 import 'package:smartboard/models/personnel.dart';
@@ -368,6 +369,49 @@ class PersonnelNettoyageWidget extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> createPersonnelAccount({
+    required String identifiant,
+    required String email,
+    required String password,
+    required String nom,
+    required String prenom,
+    required String telephone,
+    required String typeCompte,
+    bool estSuperviseur = false,
+    String? residenceAffectee,
+    required String entrepriseId,
+  }) async {
+    try {
+      // Création de l'utilisateur avec email et mot de passe
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Création d'une instance de Personnel avec l'identifiant et les autres données
+      Personnel personnel = Personnel(
+        id: userCredential.user!.uid, // L'UID généré par Firebase Auth
+        identifiant: identifiant, // L'identifiant choisi pour la connexion
+        nom: nom,
+        prenom: prenom,
+        email: email,
+        telephone: telephone,
+        typeCompte: typeCompte,
+        estSuperviseur: estSuperviseur,
+        residenceAffectee: residenceAffectee,
+        entrepriseId: entrepriseId,
+      );
+
+      // Enregistrement des données de Personnel dans Firestore
+      await FirebaseFirestore.instance.collection('personnel').doc(userCredential.user!.uid).set(personnel.toMap());
+
+      // Le mot de passe ne doit JAMAIS être stocké en clair dans la base de données
+      // Firebase Auth gère le mot de passe de manière sécurisée pour vous
+    } catch (e) {
+      // Gérer les erreurs, par exemple une adresse e-mail déjà utilisée
+    }
   }
 
   void _showDeleteConfirmationDialog(BuildContext context, Personnel personnel) {

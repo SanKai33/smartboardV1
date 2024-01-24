@@ -116,7 +116,7 @@ class _PresencePageState extends State<PresencePage> {
               itemBuilder: (context, index) {
                 Commande commande = commandes[index];
                 List<Widget> personnelWidgets = commande.personnelIds.map((id) {
-                  Personnel p = personnelDetails[id] ?? Personnel(id: id, nom: 'Inconnu', prenom: '', email: '', telephone: '', typeCompte: '', estSuperviseur: false, entrepriseId: '');
+                  Personnel p = personnelDetails[id] ?? Personnel(id: id, nom: 'Inconnu', prenom: '', email: '', telephone: '', typeCompte: '', estSuperviseur: false, entrepriseId: '', identifiant: '');
                   return Text('${p.prenom} ${p.nom}');
                 }).toList();
 

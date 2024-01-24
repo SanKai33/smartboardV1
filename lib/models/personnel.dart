@@ -2,10 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Personnel {
   String id;
+  String identifiant; // Ajout d'un champ identifiant pour la connexion
   String nom;
   String prenom;
   String email;
-  String telephone; // Ajout du champ téléphone
+  String telephone;
   String typeCompte;
   bool estSuperviseur;
   String? residenceAffectee;
@@ -13,10 +14,11 @@ class Personnel {
 
   Personnel({
     required this.id,
+    required this.identifiant, // Initialisation du nouveau champ
     required this.nom,
     required this.prenom,
     required this.email,
-    required this.telephone, // Ajout du champ téléphone
+    required this.telephone,
     required this.typeCompte,
     required this.estSuperviseur,
     this.residenceAffectee,
@@ -28,10 +30,11 @@ class Personnel {
 
     return Personnel(
       id: doc.id,
+      identifiant: data['identifiant'] ?? '', // Récupération de l'identifiant
       nom: data['nom'] ?? '',
       prenom: data['prenom'] ?? '',
       email: data['email'] ?? '',
-      telephone: data['telephone'] ?? '', // Récupération du champ téléphone
+      telephone: data['telephone'] ?? '',
       typeCompte: data['typeCompte'] ?? '',
       estSuperviseur: data['estSuperviseur'] ?? false,
       residenceAffectee: data['residenceAffectee'],
@@ -41,10 +44,11 @@ class Personnel {
 
   Map<String, dynamic> toMap() {
     return {
+      'identifiant': identifiant, // Ajout de l'identifiant dans la Map
       'nom': nom,
       'prenom': prenom,
       'email': email,
-      'telephone': telephone, // Ajout du champ téléphone
+      'telephone': telephone,
       'typeCompte': typeCompte,
       'estSuperviseur': estSuperviseur,
       'residenceAffectee': residenceAffectee,
