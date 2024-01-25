@@ -53,7 +53,7 @@ class _RegisterPageState extends State<RegisterPage> {
           telephone: _telephoneController.text.trim(),
         );
 
-        await FirebaseFirestore.instance.collection('entreprises').doc(userId).set(entreprise.toMap());
+        await FirebaseFirestore.instance.collection('entreprise').doc(userId).set(entreprise.toMap());
 
         Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (_) => MainScreen(agentId: userId, entrepriseId: userId),

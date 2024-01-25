@@ -11,8 +11,8 @@ class NotificationsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Notifications'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance

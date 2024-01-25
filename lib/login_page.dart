@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smartboard/registrer_page.dart';
 
 import 'main_screen.dart';
-import 'models/entreprise.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -27,16 +26,13 @@ class _LoginPageState extends State<LoginPage> {
         password: passwordController.text.trim(),
       );
 
-      // Vérifier si l'utilisateur est une entreprise
-      DocumentSnapshot entrepriseDoc = await FirebaseFirestore.instance.collection('entreprises').doc(userCredential.user!.uid).get();
-      if (entrepriseDoc.exists) {
-        // Rediriger vers la page MainScreen avec les données de l'entreprise
-        Entreprise entreprise = Entreprise.fromMap(entrepriseDoc.data() as Map<String, dynamic>, userCredential.user!.uid);
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => MainScreen (entrepriseId: '', agentId: '',),
-        ));
+      // Vérification si l'email appartient à un compte entreprise
+      final userDoc = await FirebaseFirestore.instance.collection('entreprises').doc(userCredential.user!.uid).get();
+      if (userDoc.exists) {
+        // Si l'utilisateur est une entreprise, redirection vers la page principale de l'entreprise
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => MainScreen(entrepriseId: userCredential.user!.uid, agentId: '',)));
       } else {
-        _showError("L'utilisateur n'est pas enregistré en tant qu'entreprise.");
+        _showError("Ce compte n'est pas enregistré comme entreprise.");
       }
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? "Erreur lors de la connexion");
@@ -57,37 +53,31 @@ class _LoginPageState extends State<LoginPage> {
       appBar: AppBar(title: Text('Connexion Entreprise')),
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(20.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TextField(
                 controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
               ),
               SizedBox(height: 20),
               TextField(
                 controller: passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Mot de passe',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: InputDecoration(labelText: 'Mot de passe'),
                 obscureText: true,
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 30),
               isLoading
                   ? CircularProgressIndicator()
                   : ElevatedButton(
                 onPressed: _signIn,
                 child: Text('Se connecter'),
               ),
+              SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  // Naviguer vers la page d'inscription
                   Navigator.of(context).push(MaterialPageRoute(builder: (context) => RegisterPage()));
                 },
                 child: Text('Créer un compte'),
@@ -99,3 +89,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+
