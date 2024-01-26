@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:smartboard/login_page.dart';
+
 import 'main_screen.dart';
 
 
@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToLogin() {
     Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => LoginPage())
+        MaterialPageRoute(builder: (_) => MainScreen(entrepriseId: '7cYXkVddxWXziiTgENtmiy7qX9Q2', agentId: ''))
     );
   }
 

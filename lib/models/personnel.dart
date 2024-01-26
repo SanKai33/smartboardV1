@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Personnel {
   String id;
-  String identifiant; // Ajout d'un champ identifiant pour la connexion
+  String identifiant;
   String nom;
   String prenom;
   String email;
@@ -14,7 +14,7 @@ class Personnel {
 
   Personnel({
     required this.id,
-    required this.identifiant, // Initialisation du nouveau champ
+    required this.identifiant,
     required this.nom,
     required this.prenom,
     required this.email,
@@ -30,7 +30,7 @@ class Personnel {
 
     return Personnel(
       id: doc.id,
-      identifiant: data['identifiant'] ?? '', // Récupération de l'identifiant
+      identifiant: data['identifiant'] ?? '',
       nom: data['nom'] ?? '',
       prenom: data['prenom'] ?? '',
       email: data['email'] ?? '',
@@ -44,7 +44,7 @@ class Personnel {
 
   Map<String, dynamic> toMap() {
     return {
-      'identifiant': identifiant, // Ajout de l'identifiant dans la Map
+      'identifiant': identifiant,
       'nom': nom,
       'prenom': prenom,
       'email': email,
@@ -55,5 +55,29 @@ class Personnel {
       'entrepriseId': entrepriseId,
     };
   }
-}
 
+  Personnel copyWith({
+    String? identifiant,
+    String? nom,
+    String? prenom,
+    String? email,
+    String? telephone,
+    String? typeCompte,
+    bool? estSuperviseur,
+    String? residenceAffectee,
+    String? entrepriseId, required String field, required String id,
+  }) {
+    return Personnel(
+      id: this.id,  // L'ID reste inchangé
+      identifiant: identifiant ?? this.identifiant,
+      nom: nom ?? this.nom,
+      prenom: prenom ?? this.prenom,
+      email: email ?? this.email,
+      telephone: telephone ?? this.telephone,
+      typeCompte: typeCompte ?? this.typeCompte,
+      estSuperviseur: estSuperviseur ?? this.estSuperviseur,
+      residenceAffectee: residenceAffectee ?? this.residenceAffectee,
+      entrepriseId: entrepriseId ?? this.entrepriseId,
+    );
+  }
+}
