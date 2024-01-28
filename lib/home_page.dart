@@ -24,6 +24,10 @@ class HomePage extends StatelessWidget {
     return '';
   }
 
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -48,7 +52,7 @@ class HomePage extends StatelessWidget {
               Spacer(),
               IconButton(
                 icon: Icon(Icons.send_outlined),
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage())),
+                onPressed: () => _navigateToMessagerieIfAdmin(context),
               ),
             ],
           ),
@@ -137,6 +141,43 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
+void _navigateToMessagerieIfAdmin(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      TextEditingController passwordController = TextEditingController();
+      return AlertDialog(
+        title: Text('Mot de Passe Administrateur'),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(hintText: "Entrez le mot de passe"),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Annuler'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: Text('OK'),
+            onPressed: () {
+              if (passwordController.text == '2233') {
+                Navigator.of(context).pop();
+                Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage()));
+              } else {
+                // Afficher une erreur ou fermer la boîte de dialogue
+              }
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
 
 

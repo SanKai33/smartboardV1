@@ -519,7 +519,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     } else if (details.etatValidation == 'Ménage validé') {
       return Icon(Icons.check_circle, color: Colors.blue); // Icône bleue pour le ménage validé
     } else if (details.etatValidation == 'Contrôle validé') {
-      return Icon(Icons.check_circle_outline, color: Colors.green); // Icône verte pour le contrôle validé
+      return Icon(Icons.check_circle, color: Colors.green); // Icône verte pour le contrôle validé
     }
     return Icon(Icons.circle, color: Colors.grey); // Icône par défaut si non validé
   }
