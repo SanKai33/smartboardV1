@@ -8,13 +8,17 @@ import 'package:printing/printing.dart';
 
 import 'creer_commande_web.dart';
 import 'models/commande.dart';
+import 'models/commande.dart';
+import 'models/commande.dart';
 import 'models/detailAppartement.dart';
 import 'models/residence.dart';
 
 class VisualiserCommandePage extends StatefulWidget {
   final String commandeId;
+  final Commande commande;
 
-  VisualiserCommandePage({required this.commandeId, required Commande commande});
+
+  VisualiserCommandePage({required this.commandeId, required this.commande, });
 
   @override
   _VisualiserCommandePageState createState() => _VisualiserCommandePageState();
@@ -23,6 +27,16 @@ class VisualiserCommandePage extends StatefulWidget {
 class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
   late final String commandeId;
   late final Commande commande;
+
+
+  @override
+  void initState() {
+    super.initState();
+    commandeId = widget.commandeId;
+    commande = widget.commande;
+    // Ajoutez cette ligne
+    // Autres initialisations si nécessaire
+  }
 
   Future<void> _createPdf(Commande commande) async {
     final pdf = pw.Document();
@@ -123,8 +137,12 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                 padding: EdgeInsets.all(10),
                 child: ElevatedButton(
                   onPressed: () async {
-                    // Logique pour extraire le PDF
-                    _createPdf(commande);
+                    try {
+                      await _createPdf(widget.commande);
+                    } catch (e) {
+                      print('Erreur lors de la création du PDF: $e');
+                      // Vous pouvez également afficher une alerte à l'utilisateur ici
+                    }
                   },
                   child: Text('Extraire le PDF', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
@@ -138,7 +156,7 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                 child: ElevatedButton(
                   onPressed: () {
                     // Logique pour modifier la commande
-                    _navigateToCommandeEditPage(commande);
+                    _navigateToCommandeEditPage(widget.commande);
                   },
                   child: Text('Modifier la Commande', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(

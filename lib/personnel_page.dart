@@ -1,7 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:smartboard/affectation_personnel.dart';
 import 'package:smartboard/models/personnel.dart';
 
 class PersonnelPage extends StatefulWidget {
@@ -14,47 +12,16 @@ class PersonnelPage extends StatefulWidget {
 }
 
 class _PersonnelPageState extends State<PersonnelPage> {
-  bool _isAuthorized = false;
+
   List<Personnel> personnelList = [];
 
   @override
   void initState() {
     super.initState();
-    _requestPassword();
+
   }
 
-  void _requestPassword() async {
-    TextEditingController passwordController = TextEditingController();
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Mot de passe Administrateur'),
-          content: TextField(
-            controller: passwordController,
-            obscureText: true,
-            decoration: InputDecoration(hintText: 'Entrez le mot de passe'),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Valider'),
-              onPressed: () {
-                if (passwordController.text == '2233') {
-                  setState(() {
-                    _isAuthorized = true;
-                  });
-                  Navigator.of(context).pop();
-                } else {
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+
 
   void _addNewPersonnelRow() {
     setState(() {
@@ -103,14 +70,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isAuthorized) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Accès Restreint'),
-        ),
-        body: Center(child: Text('Vous n’êtes pas autorisé à voir cette page.')),
-      );
-    }
+
 
     return Scaffold(
       appBar: AppBar(
