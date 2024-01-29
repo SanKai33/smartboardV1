@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+
+import 'historique_commande_page.dart';
+import 'models/commande.dart';
 
 class CalendarPage extends StatefulWidget {
   @override
@@ -72,10 +76,58 @@ class CommandesWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ici, insérez la logique et l'interface utilisateur pour afficher les commandes pour la date sélectionnée
-    return Center(
-      child: Text(selectedDay != null ? 'Commandes pour ${selectedDay!.toLocal()}' : 'Sélectionnez une date'),
+    return StreamBuilder<List<Commande>>(
+      stream: getCommandesForDate(selectedDay),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(child: Text("Aucune commande pour cette date"));
+        }
+
+        List<Commande> commandes = snapshot.data!;
+        return ListView.builder(
+          itemCount: commandes.length,
+          itemBuilder: (context, index) {
+            Commande commande = commandes[index];
+            return Card(
+              child: ListTile(
+                title: Text(commande.nomResidence),
+                subtitle: Text("Commande ID: ${commande.id}"),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => HistoriqueCommandePage(commande: commande),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  Stream<List<Commande>> getCommandesForDate(DateTime? date) {
+    if (date == null) {
+      return Stream.value([]);
+    }
+
+    DateTime startDate = DateTime(date.year, date.month, date.day);
+    DateTime endDate = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+    return FirebaseFirestore.instance
+        .collection('commandes')
+        .where('dateCommande', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('dateCommande', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Commande.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
   }
 }
 

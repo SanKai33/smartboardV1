@@ -12,132 +12,111 @@ class PersonnelPage extends StatefulWidget {
 }
 
 class _PersonnelPageState extends State<PersonnelPage> {
-
   List<Personnel> personnelList = [];
 
   @override
   void initState() {
     super.initState();
-
+    _loadExistingPersonnel();
   }
 
-
-
-  void _addNewPersonnelRow() {
-    setState(() {
-      personnelList.add(Personnel(
-        id: '', // Laisser vide, Firestore générera un ID lors de l'enregistrement
-        identifiant: '',
-        nom: '',
-        prenom: '',
-        email: '',
-        telephone: '',
-        typeCompte: '',
-        estSuperviseur: false,
-        entrepriseId: widget.entrepriseId,
-      ));
-    });
-  }
-
-  void _updatePersonnelField(Personnel personnel, String field, String value) {
-    FirebaseFirestore.instance.collection('personnel').doc(personnel.id).update({field: value});
-    int index = personnelList.indexOf(personnel);
-    if (index != -1) {
+  void _loadExistingPersonnel() async {
+    var collection = FirebaseFirestore.instance.collection('personnel').where('entrepriseId', isEqualTo: widget.entrepriseId);
+    var querySnapshot = await collection.get();
+    for (var doc in querySnapshot.docs) {
       setState(() {
-        personnelList[index] = personnel.copyWith(field: value, id: '');
+        personnelList.add(Personnel.fromFirestore(doc));
       });
     }
   }
 
-  void _createNewPersonnel(Personnel personnel) {
-    DocumentReference docRef = FirebaseFirestore.instance.collection('personnel').doc();
-    personnel = personnel.copyWith(id: docRef.id, field: '');  // Mise à jour de l'ID
-    docRef.set(personnel.toMap());
-    int index = personnelList.indexOf(personnel);
-    if (index != -1) {
-      setState(() {
-        personnelList[index] = personnel;
-      });
-    }
+  void _showAddPersonnelDialog() {
+    final _nomController = TextEditingController();
+    final _prenomController = TextEditingController();
+    final _telephoneController = TextEditingController();
+    final _emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Ajouter un nouvel agent'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                TextField(controller: _nomController, decoration: InputDecoration(hintText: "Nom")),
+                TextField(controller: _prenomController, decoration: InputDecoration(hintText: "Prénom")),
+                TextField(controller: _telephoneController, decoration: InputDecoration(hintText: "Téléphone")),
+                TextField(controller: _emailController, decoration: InputDecoration(hintText: "Email")),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Enregistrer'),
+              onPressed: () {
+                _addNewPersonnel(
+                  _nomController.text,
+                  _prenomController.text,
+                  _telephoneController.text,
+                  _emailController.text,
+                );
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  void _deletePersonnel(Personnel personnel) {
-    FirebaseFirestore.instance.collection('personnel').doc(personnel.id).delete();
+  void _addNewPersonnel(String nom, String prenom, String telephone, String email) {
+    String identifiant = nom.toLowerCase() + prenom[0].toLowerCase();
+    Personnel newPersonnel = Personnel(
+      id: '',
+      identifiant: identifiant,
+      nom: nom,
+      prenom: prenom,
+      email: email,
+      telephone: telephone,
+      typeCompte: 'Standard', // Ajustez selon votre logique
+      estSuperviseur: false,
+      entrepriseId: widget.entrepriseId,
+    );
+    FirebaseFirestore.instance.collection('personnel').add(newPersonnel.toMap());
     setState(() {
-      personnelList.removeWhere((element) => element.id == personnel.id);
+      personnelList.add(newPersonnel);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Personnel de l\'entreprise'),
-        actions: <Widget>[
+        actions: [
           IconButton(
             icon: Icon(Icons.add),
-            onPressed: _addNewPersonnelRow,
+            onPressed: _showAddPersonnelDialog,
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: [
-            DataColumn(label: Text('Nom')),
-            DataColumn(label: Text('Prénom')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('Téléphone')),
-            DataColumn(label: Text('Actions')),
-          ],
-          rows: personnelList.map((personnel) {
-            bool isNewRow = personnel.id.isEmpty;
-            return DataRow(cells: [
-              DataCell(TextField(
-                controller: TextEditingController(text: personnel.nom),
-                onSubmitted: (value) {
-                  isNewRow
-                      ? _createNewPersonnel(personnel.copyWith(nom: value, field: '', id: ''))
-                      : _updatePersonnelField(personnel, 'nom', value);
-                },
-              )),
-              DataCell(TextField(
-                controller: TextEditingController(text: personnel.prenom),
-                onSubmitted: (value) {
-                  isNewRow
-                      ? _createNewPersonnel(personnel.copyWith(prenom: value, field: '', id: ''))
-                      : _updatePersonnelField(personnel, 'prenom', value);
-                },
-              )),
-              DataCell(TextField(
-                controller: TextEditingController(text: personnel.email),
-                onSubmitted: (value) {
-                  isNewRow
-                      ? _createNewPersonnel(personnel.copyWith(email: value, field: '', id: ''))
-                      : _updatePersonnelField(personnel, 'email', value);
-                },
-              )),
-              DataCell(TextField(
-                controller: TextEditingController(text: personnel.telephone),
-                onSubmitted: (value) {
-                  isNewRow
-                      ? _createNewPersonnel(personnel.copyWith(telephone: value, field: '', id: ''))
-                      : _updatePersonnelField(personnel, 'telephone', value);
-                },
-              )),
-              DataCell(Row(
-                children: <Widget>[
-                  IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () => _deletePersonnel(personnel),
-                  ),
-                ],
-              )),
-            ]);
-          }).toList(),
-        ),
+      body: ListView.builder(
+        itemCount: personnelList.length,
+        itemBuilder: (context, index) {
+          Personnel personnel = personnelList[index];
+          return ListTile(
+            title: Text(personnel.nom + " " + personnel.prenom),
+            subtitle: Text(personnel.telephone),
+            // Ajoutez d'autres informations ici si nécessaire
+          );
+        },
       ),
     );
   }

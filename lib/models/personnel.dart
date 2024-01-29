@@ -63,12 +63,12 @@ class Personnel {
     String? email,
     String? telephone,
     String? typeCompte,
-    bool? estSuperviseur,
+    bool? estSuperviseur,  // Retirer required ici
     String? residenceAffectee,
-    String? entrepriseId, required String field, required String id,
+    String? entrepriseId, required String id, required String field,
   }) {
     return Personnel(
-      id: this.id,  // L'ID reste inchangé
+      id: this.id,
       identifiant: identifiant ?? this.identifiant,
       nom: nom ?? this.nom,
       prenom: prenom ?? this.prenom,

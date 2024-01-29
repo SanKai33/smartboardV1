@@ -68,35 +68,49 @@ class HomePage extends StatelessWidget {
                     context,
                     MaterialPageRoute(builder: (context) => CreerCommande(entrepriseId: entrepriseId)),
                   ),
-                  child: Text(
-                    'Nouvelle Commande',
-                    style: TextStyle(color: Colors.white),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min, // Pour s'assurer que le Row ne prend que l'espace nécessaire
+                    children: [
+                      Icon(Icons.add, color: Colors.white), // Icône
+                      SizedBox(width: 8), // Espace entre l'icône et le texte
+                      Text(
+                        'Nouvelle Commande',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
                   ),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8), // Moins arrondi, ajustez selon vos préférences
+                    ),
+                  ),
                 ),
               ),
             ),
             // Bandeau de design "Commandes en cours"
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey[100], // Utilisez une couleur douce
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.5),
-                    spreadRadius: 2,
-                    blurRadius: 7,
-                    offset: Offset(0, 3), // changes position of shadow
+            Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200], // Couleur plus claire et douce
+                  borderRadius: BorderRadius.circular(20), // Coins plus arrondis
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5), // Ombre subtile
+                      spreadRadius: 0,
+                      blurRadius: 10,
+                      offset: Offset(0, 4), // Légèrement décalée
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Commandes en cours',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // Couleur de texte simple
                   ),
-                ],
-              ),
-              child: Text(
-                'Commandes en cours',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // Couleur de texte élégante
                 ),
               ),
             ),
