@@ -274,7 +274,16 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
               children: [
                 ElevatedButton(
                   onPressed: toggleSelectAll,
-                  child: Text(areAllSelected ? 'Désélectionner tout' : 'Sélectionner tout'),
+                  child: Text(
+                    areAllSelected ? 'Désélectionner tout' : 'Sélectionner tout',
+                    style: TextStyle(color: Colors.white), // Couleur de texte en blanc
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.black, // Couleur de fond en noir
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5), // Moins arrondi, ajustez le rayon selon vos préférences
+                    ),
+                  ),
                 ),
                 InkWell(
                   onTap: () async {
@@ -336,7 +345,7 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
                         selected: isSelected,
                         color: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
                           if (states.contains(MaterialState.selected)) {
-                            return Colors.lightBlue.shade100;
+                            return Colors.lightGreen.shade100;
                           }
                           return null;
                         }),
