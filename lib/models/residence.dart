@@ -6,6 +6,7 @@ class Residence {
   String adresse;
   String entrepriseId;
   String imageUrl;
+  List<String> personnelIds; // Ajout pour stocker les identifiants du personnel
 
   Residence({
     required this.id,
@@ -13,6 +14,7 @@ class Residence {
     required this.adresse,
     required this.entrepriseId,
     this.imageUrl = '',
+    this.personnelIds = const [], // Initialisation par défaut
   });
 
   Map<String, dynamic> toMap() {
@@ -21,6 +23,7 @@ class Residence {
       'adresse': adresse,
       'entrepriseId': entrepriseId,
       'imageUrl': imageUrl,
+      'personnelIds': personnelIds, // Ajout de la liste des identifiants du personnel
     };
   }
 
@@ -32,6 +35,7 @@ class Residence {
       adresse: data['adresse'] ?? '',
       entrepriseId: data['entrepriseId'] ?? '',
       imageUrl: data['imageUrl'] ?? '',
+      personnelIds: List<String>.from(data['personnelIds'] ?? []), // Récupération de la liste des identifiants du personnel
     );
   }
 }

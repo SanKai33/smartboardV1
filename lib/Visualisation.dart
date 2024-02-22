@@ -5,12 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
-
 import 'creer_commande_web.dart';
 import 'models/commande.dart';
-import 'models/commande.dart';
-import 'models/commande.dart';
 import 'models/detailAppartement.dart';
+import 'models/personnel.dart';
 import 'models/residence.dart';
 
 class VisualiserCommandePage extends StatefulWidget {
@@ -38,8 +36,22 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
     // Autres initialisations si nécessaire
   }
 
+  Future<List<Personnel>> _fetchPersonnel(String residenceId) async {
+    QuerySnapshot personnelSnapshot = await FirebaseFirestore.instance
+        .collection('personnel')
+        .where('residenceAffectee', isEqualTo: residenceId)
+        .get();
+
+    return personnelSnapshot.docs
+        .map((doc) => Personnel.fromFirestore(doc))
+        .toList();
+  }
+
+
   Future<void> _createPdf(Commande commande) async {
     final pdf = pw.Document();
+
+    List<Personnel> personnelList = await _fetchPersonnel(commande.residenceId);
 
     pdf.addPage(
       pw.MultiPage(
@@ -95,10 +107,36 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                 ['', '', 'Fermetures', '$totalFermetures'],
               ],
             ),
+
+            // Section du personnel affecté
+            pw.Header(level: 1, child: pw.Text('Personnel Affecté')),
+            pw.Table.fromTextArray(
+              context: context,
+              headerAlignment: pw.Alignment.centerLeft,
+              data: <List<String>>[
+                <String>['Nom', 'Prénom', 'Téléphone'],
+                ...personnelList.map((personnel) => [
+                  personnel.nom,
+                  personnel.prenom,
+                  personnel.telephone,
+
+                ]),
+              ],
+            ),
+
+
+
+
+
+
+
           ];
         },
       ),
     );
+
+
+
 
     // Enregistrez le fichier PDF et partagez-le
     await Printing.sharePdf(bytes: await pdf.save(), filename: 'Commande-${commande.nomResidence}.pdf');

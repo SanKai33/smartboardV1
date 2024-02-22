@@ -37,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
     if (index == 5) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => PresencePage()),
+        MaterialPageRoute(builder: (context) => PresencePage(entrepriseId: widget.entrepriseId,)),
       );
     } else {
       setState(() {
@@ -61,7 +61,17 @@ class _MainScreenState extends State<MainScreen> {
 
   AppBar _buildWebAppBar() {
     return AppBar(
-      title: Text('Acceuil'),
+      title: Row(
+        mainAxisSize: MainAxisSize.min, // Limite la taille de la Row à ses enfants
+        children: <Widget>[
+          Image.asset(
+            'assets/images/icon.png', // Assurez-vous que le chemin correspond à l'emplacement de votre logo
+            height: 50.0, // Ajustez la hauteur selon vos besoins
+          ),
+          SizedBox(width: 8), // Espacement entre le logo et le texte
+          Text(''),
+        ],
+      ),
       actions: <Widget>[
         _buildWebMenuButton('Accueil', Icons.home, 0),
         _buildWebMenuButton('Calendrier', Icons.calendar_today, 1),

@@ -48,7 +48,7 @@ android {
         multiDexEnabled true
         minSdkVersion flutter.minSdkVersion
 
-        minSdkVersion 20
+        minSdkVersion 21
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -91,7 +91,7 @@ flutter {
 dependencies {
 
     apply plugin: 'com.google.gms.google-services'
-    implementation 'com.google.firebase:firebase-appcheck-debug:17.1.1'
+    implementation 'com.google.firebase:firebase-appcheck-debug:17.1.2'
 
 
 
