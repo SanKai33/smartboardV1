@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import 'Visualisation.dart';
 import 'affectation_personnel.dart';
 import 'models/appartement.dart';
@@ -9,7 +11,7 @@ import 'models/commande.dart';
 import 'models/detailAppartement.dart';
 import 'models/equipes.dart';
 import 'models/personnel.dart';
-
+import 'models/residence.dart';
 
 
 
@@ -24,42 +26,45 @@ class ValidationMenagePage extends StatefulWidget {
 
 class _ValidationMenagePageState extends State<ValidationMenagePage> {
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  StreamSubscription<DocumentSnapshot>? _commandeSubscription;
+  Residence? residence; // Variable pour stocker l'objet Residence
+  String _fcmToken = '';
+  Timer? _timer;
   Commande? _commande;
+
+
 
   @override
   void initState() {
     super.initState();
-    _subscribeToCommande();
+    _loadCommande();
+    _startAutoRefresh();
   }
-  void _subscribeToCommande() {
-    _commandeSubscription = _firestore.collection('commandes').doc(widget.commande.id)
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists && mounted) {
-        setState(() {
-          _commande = Commande.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
-        });
-      }
+
+  void _loadCommande() async {
+    if (!mounted) return; // Ajoutez cette ligne pour vérifier que le widget est monté
+
+    DocumentSnapshot snapshot = await _firestore.collection('commandes').doc(widget.commande.id).get();
+    setState(() {
+      _commande = Commande.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
     });
   }
+
+  void _startAutoRefresh() {
+    _timer = Timer.periodic(Duration(seconds: 10), (Timer t) => _loadCommande());
+  }
+
   @override
   void dispose() {
-    _commandeSubscription?.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
   void _updateCommande() async {
-    // Assure-toi que cette fonction reflète correctement les modifications que tu souhaites apporter à Firestore
-    try {
-      // Exemple de mise à jour d'une commande
-      await _firestore.collection('commandes').doc(widget.commande.id).update({
-        // Ici, ajoute les champs que tu souhaites mettre à jour
-      });
-      print("Commande mise à jour avec succès.");
-    } catch (e) {
-      print("Erreur lors de la mise à jour de la commande: $e");
-    }
+    await _firestore.collection('commandes').doc(widget.commande.id).update({
+      'detailsAppartements': widget.commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
+      'equipes': widget.commande.equipes.map((e) => e.toMap()).toList(),
+    });
+    _loadCommande();
   }
 
 
@@ -74,22 +79,16 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             children: <Widget>[
               ListTile(
                 title: Text('Valider le ménage'),
-                onTap: () {
-                  Navigator.of(context).pop(); // Ferme la boîte de dialogue
-                  _choisirOption(appartement, 'Ménage validé');
-                },
+                onTap: () => _choisirOption(appartement, 'Ménage validé'),
               ),
               ListTile(
                 title: Text('Valider le contrôle'),
-                onTap: () {
-                  Navigator.of(context).pop(); // Ferme la boîte de dialogue
-                  _demanderCodeAdminPourControle(appartement);
-                },
+                onTap: () => _choisirOption(appartement, 'Contrôle validé'),
               ),
               ListTile(
                 title: Text('Retour sur le ménage'),
                 onTap: () {
-                  Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                  Navigator.of(context).pop();
                   _afficherOptionsRetourMenage(appartement);
                 },
               ),
@@ -153,10 +152,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
 
   void _choisirOption(Appartement appartement, String choix) {
     Navigator.of(context).pop(); // Ferme la boîte de dialogue
-
     setState(() {
-      // Récupère les détails de l'appartement actuel ou crée de nouveaux détails si inexistants
-      DetailsAppartement details = _commande?.detailsAppartements[appartement.id] ?? DetailsAppartement();
+      DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
 
       // Si c'est un retour, mettre à jour la note et marquer le ménage comme non effectué
       if (choix.startsWith('Retour:')) {
@@ -181,10 +178,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
         details.menageEffectue = false;
       }
 
-      // Mettre à jour les détails dans la commande
-      _commande?.detailsAppartements[appartement.id] = details;
-
-      // Mettre à jour la commande dans Firestore et localement
+      widget.commande.detailsAppartements[appartement.id] = details;
       _updateCommande();
     });
   }
@@ -270,7 +264,33 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     return personnelList;
   }
 
+  Future<void> _showAddPersonnelDialog(Equipe equipe) async {
+    List<Personnel> personnelList = await _fetchAvailablePersonnel();
 
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Ajouter personnel à ${equipe.nom}'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: personnelList.map((personnel) {
+                return ListTile(
+                  title: Text('${personnel.prenom} ${personnel.nom}'),
+                  onTap: () {
+                    // Logique pour ajouter le personnel à l'équipe
+                    equipe.appartementIds.add(personnel.id); // Ajouter l'ID de l'agent à l'équipe
+                    _updateCommande(); // Mettre à jour la commande
+                    Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _showAssignAppartementsDialog(Equipe equipe) {
     // Création d'une map pour suivre les appartements sélectionnés
@@ -423,44 +443,6 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  void _demanderCodeAdminPourControle(Appartement appartement) {
-    final TextEditingController _codeAdminController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Entrer le Code Administrateur'),
-          content: TextField(
-            controller: _codeAdminController,
-            keyboardType: TextInputType.number, // Clavier numérique
-            decoration: InputDecoration(
-              hintText: 'Code Administrateur',
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Annuler'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              child: Text('Valider'),
-              onPressed: () {
-                if (_codeAdminController.text == "2233") {
-                  Navigator.of(context).pop();
-                  _choisirOption(appartement, 'Contrôle validé'); // Validez le contrôle
-                } else {
-                  // Gérer le cas où le code est incorrect
-                  print('Code Administrateur incorrect');
-                }
-              },
-            ),
-          ],
         );
       },
     );
@@ -638,7 +620,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                   onPressed: _visualiserCommande,
                   child: Text('Visualiser la commande', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    primary: Colors.black,
+                    backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -648,7 +630,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                   onPressed: _ajouterEquipe,
                   child: Icon(Icons.group_add, color: Colors.white), // Icône pour ajouter une équipe
                   style: ElevatedButton.styleFrom(
-                    primary: Colors.black,
+                    backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -668,7 +650,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                     },
                     child: Icon(Icons.person_add_alt_1, color: Colors.white), // Icône pour affecter le personnel
                     style: ElevatedButton.styleFrom(
-                      primary: Colors.black,
+                      backgroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -688,14 +670,14 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
 
               children: [
                 Visibility(
-                visible: false, // Mettez ce paramètre à false pour rendre le bouton invisible
-                maintainSize: true, // Maintient la taille du bouton même s'il est invisible
-                maintainAnimation: true, // Maintient les animations
-                maintainState: true, // Maintient l'état du bouton
-                child: ElevatedButton(
-                  onPressed: _visualiserCommande,
-                  child: Text('Visualiser la commande'),
-                ),
+                  visible: false, // Mettez ce paramètre à false pour rendre le bouton invisible
+                  maintainSize: true, // Maintient la taille du bouton même s'il est invisible
+                  maintainAnimation: true, // Maintient les animations
+                  maintainState: true, // Maintient l'état du bouton
+                  child: ElevatedButton(
+                    onPressed: _visualiserCommande,
+                    child: Text('Visualiser la commande'),
+                  ),
                 ),
 
 
@@ -812,11 +794,11 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                             ],
                           ),
                           onTap: () => _afficherOptionsValidation(appartement),
-                            ),
+                        ),
 
 
 
-                        );
+                      );
 
                     }).toList(),
                   );
@@ -830,53 +812,55 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   }
 
 
-
-
-  Future<List<Personnel>> _fetchPersonnelForResidence(String residenceId) async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('personnel')
-          .where('entrepriseId', isEqualTo: widget.commande.entrepriseId)
-          .where('residenceAffectee', isEqualTo: residenceId)
-          .get();
-
-      return querySnapshot.docs
-          .map((doc) => Personnel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      print("Erreur lors de la récupération du personnel : $e");
-      return [];
-    }
-  }
-
-  Future<void> _showAddPersonnelDialog(Equipe equipe) async {
-    // Ici, on appelle _fetchPersonnelForResidence avec l'ID de la résidence de la commande
-    List<Personnel> personnelList = await _fetchPersonnelForResidence(widget.commande.residenceId);
+  Future<void> _showPersonnelSelectionDialog() async {
+    Set<String> selectedPersonnelIds = Set<String>.from(widget.commande.personnelIds);
+    final List<Personnel> personnelList = await _fetchPersonnel();
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Ajouter personnel à ${equipe.nom}'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: personnelList.map((personnel) {
-                return ListTile(
-                  title: Text('${personnel.prenom} ${personnel.nom}'),
-                  onTap: () {
-                    // Logique pour ajouter le personnel à l'équipe
-                    equipe.personnelIds.add(personnel.id);
-                    _updateCommande(); // Mettre à jour la commande
-                    Navigator.of(context).pop(); // Fermer la boîte de dialogue
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Sélectionner le Personnel'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: personnelList.map((personnel) {
+                    return CheckboxListTile(
+                      title: Text('${personnel.prenom} ${personnel.nom}'),
+                      value: _isSelected(personnel, selectedPersonnelIds),
+                      onChanged: (bool? value) {
+                        if (value == true) {
+                          selectedPersonnelIds.add(personnel.id);
+                        } else {
+                          selectedPersonnelIds.remove(personnel.id);
+                        }
+                        setState(() {}); // Met à jour l'état local de la boîte de dialogue
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Annuler'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text('Valider'),
+                  onPressed: () {
+                    _updateCommandeWithSelectedPersonnel(selectedPersonnelIds);
+                    Navigator.of(context).pop();
                   },
-                );
-              }).toList(),
-            ),
-          ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
+
 
   void _updateCommandeWithSelectedPersonnel(Set<String> selectedPersonnelIds) {
     setState(() {
@@ -923,6 +907,15 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
       }
     });
   }
+
+
+
+
+
+
+
+
+
   void _visualiserCommande() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => VisualiserCommandePage(commande: widget.commande, commandeId: widget.commande.id,)),

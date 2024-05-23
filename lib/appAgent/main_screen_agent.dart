@@ -1,26 +1,23 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:smartboard/messagerie.dart';
-import 'package:smartboard/parametrer_compte.dart';
-import 'package:smartboard/presence_page.dart';
-import 'package:smartboard/tarrification_page.dart';
-import 'home_page.dart';
-import 'calendar_page.dart';
-import 'residences_page.dart';
-import 'notifications_page.dart';
-import 'personnel_page.dart';
+import 'package:smartboard/appAgent/parametrer_commpte_agent.dart';
+import '../calendar_page.dart';
+import '../messagerie.dart';
+import '../notifications_page.dart';
+import 'home_page_agent.dart';
 
-class MainScreen extends StatefulWidget {
+class MainScreenAgent extends StatefulWidget {
   final String entrepriseId;
   final String agentId;
 
-  MainScreen({required this.entrepriseId, required this.agentId, });
+  MainScreenAgent({required this.entrepriseId, required this.agentId});
 
   @override
-  _MainScreenState createState() => _MainScreenState();
+  _MainScreenAgentState createState() => _MainScreenAgentState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenAgentState extends State<MainScreenAgent> {
   int _selectedIndex = 0;
   late List<Widget> _widgetOptions;
 
@@ -28,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _widgetOptions = [
-      HomePage(entrepriseId: widget.entrepriseId),
+      HomePageAgent(entrepriseId: widget.entrepriseId),
       CalendarPage(),
       NotificationsPage(entrepriseId: widget.entrepriseId),
     ];
@@ -58,35 +55,19 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(Icons.more_vert),
               onSelected: (int index) {
                 switch (index) {
-                  case 4:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ResidencesPage(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 5:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => PresencePage(entrepriseId: widget.entrepriseId)));
-                    break;
                   case 6:
                     Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage(currentEntrepriseId: widget.entrepriseId,)));
                     break;
                   case 7:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ParametreCompte(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 8:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => PersonnelPage(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 9:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => TarificationPage(entrepriseId: widget.entrepriseId,)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => ParametreCompteAgent(agentId: widget.agentId)));
                     break;
                   default:
                     break;
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<int>>[
-                PopupMenuItem<int>(value: 4, child: Row(children: [Icon(Icons.apartment, color: Colors.grey), SizedBox(width: 10), Text('Résidences')])),
-                PopupMenuItem<int>(value: 5, child: Row(children: [Icon(Icons.access_time, color: Colors.grey), SizedBox(width: 10), Text('Présence')])),
                 PopupMenuItem<int>(value: 6, child: Row(children: [Icon(Icons.message, color: Colors.grey), SizedBox(width: 10), Text('Messagerie')])),
                 PopupMenuItem<int>(value: 7, child: Row(children: [Icon(Icons.settings, color: Colors.grey), SizedBox(width: 10), Text('Paramètres')])),
-                PopupMenuItem<int>(value: 8, child: Row(children: [Icon(Icons.group, color: Colors.grey), SizedBox(width: 10), Text('Personnel')])),
-                PopupMenuItem<int>(value: 9, child: Row(children: [Icon(Icons.local_atm, color: Colors.grey), SizedBox(width: 10), Text('Tarif')]))
               ],
             ),
             label: 'Plus',
@@ -127,6 +108,3 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
-
-

@@ -279,7 +279,7 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
                     style: TextStyle(color: Colors.white), // Couleur de texte en blanc
                   ),
                   style: ElevatedButton.styleFrom(
-                    primary: Colors.black, // Couleur de fond en noir
+                    backgroundColor: Colors.black, // Couleur de fond en noir
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(5), // Moins arrondi, ajustez le rayon selon vos préférences
                     ),

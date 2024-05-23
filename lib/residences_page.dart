@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:smartboard/parametrer_page.dart';
 import 'models/residence.dart';
 
-
 class ResidencesPage extends StatelessWidget {
   final String entrepriseId;
 
@@ -28,7 +27,7 @@ class ResidencesPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('residences')
-            .where('entrepriseId', isEqualTo: entrepriseId)
+            .where('entrepriseId', isEqualTo: this.entrepriseId)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -43,8 +42,17 @@ class ResidencesPage extends StatelessWidget {
             return Center(child: Text('Aucune résidence trouvée'));
           }
 
-          return ListView(
-            children: snapshot.data!.docs.map((DocumentSnapshot document) {
+          return GridView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 16.0), // Ajout de padding horizontal
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,  // 3 colonnes
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.0,  // Chaque élément est un carré
+            ),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              DocumentSnapshot document = snapshot.data!.docs[index];
               Residence residence = Residence.fromFirestore(document);
               return FutureBuilder<int>(
                 future: _getNombreAppartements(residence.id),
@@ -53,8 +61,8 @@ class ResidencesPage extends StatelessWidget {
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundImage: residence.imageUrl.isNotEmpty
-                            ? NetworkImage(residence.imageUrl as String)  // Assurez-vous que imageUrl est une String
-                            : AssetImage('path/to/placeholder_image.png') as ImageProvider, // Remplacez par votre image placeholder
+                            ? NetworkImage(residence.imageUrl as String) // Cast en String explicitement
+                            : AssetImage('assets/images/placeholder.png') as ImageProvider,
                         radius: 25,
                       ),
                       title: Text(
@@ -87,7 +95,7 @@ class ResidencesPage extends StatelessWidget {
                   );
                 },
               );
-            }).toList(),
+            },
           );
         },
       ),
@@ -105,4 +113,3 @@ class ResidencesPage extends StatelessWidget {
     );
   }
 }
-

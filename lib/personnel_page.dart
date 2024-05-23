@@ -24,17 +24,29 @@ class _PersonnelPageState extends State<PersonnelPage> {
     _loadExistingPersonnel();
     _loadResidences();
   }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   void _loadResidences() async {
-    var collection = FirebaseFirestore.instance.collection('residences')
+    var collection = FirebaseFirestore.instance
+        .collection('residences')
         .where('entrepriseId', isEqualTo: widget.entrepriseId);
     var querySnapshot = await collection.get();
-    var tempList = querySnapshot.docs.map((doc) => Residence.fromFirestore(doc)).toList();
+    var tempList = querySnapshot.docs
+        .map((doc) => Residence.fromFirestore(doc))
+        .toList();
     setState(() {
       residences = tempList;
     });
   }
+
   Stream<List<Personnel>> _personnelStream() {
-    return FirebaseFirestore.instance.collection('personnel')
+    return FirebaseFirestore.instance
+        .collection('personnel')
         .where('entrepriseId', isEqualTo: widget.entrepriseId)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -43,7 +55,8 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   Stream<List<Residence>> _residencesStream() {
-    return FirebaseFirestore.instance.collection('residences')
+    return FirebaseFirestore.instance
+        .collection('residences')
         .where('entrepriseId', isEqualTo: widget.entrepriseId)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -52,10 +65,13 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _loadExistingPersonnel() async {
-    var collection = FirebaseFirestore.instance.collection('personnel')
+    var collection = FirebaseFirestore.instance
+        .collection('personnel')
         .where('entrepriseId', isEqualTo: widget.entrepriseId);
     var querySnapshot = await collection.get();
-    var tempList = querySnapshot.docs.map((doc) => Personnel.fromFirestore(doc)).toList();
+    var tempList = querySnapshot.docs
+        .map((doc) => Personnel.fromFirestore(doc))
+        .toList();
     setState(() {
       personnelList = tempList;
       displayedPersonnelList = tempList;
@@ -63,19 +79,17 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _filterPersonnel(String query) {
-    if (query.isEmpty) {
-      setState(() {
-        displayedPersonnelList = personnelList;
-      });
-    } else {
-      setState(() {
-        displayedPersonnelList = personnelList
-            .where((personnel) =>
-        personnel.nom.toLowerCase().contains(query.toLowerCase()) ||
-            personnel.prenom.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      });
-    }
+    setState(() {
+      displayedPersonnelList = query.isEmpty
+          ? personnelList
+          : personnelList
+          .where((personnel) =>
+      personnel.nom.toLowerCase().contains(query.toLowerCase()) ||
+          personnel.prenom
+              .toLowerCase()
+              .contains(query.toLowerCase()))
+          .toList();
+    });
   }
 
   void _showAddPersonnelDialog() {
@@ -92,10 +106,18 @@ class _PersonnelPageState extends State<PersonnelPage> {
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                TextField(controller: _nomController, decoration: InputDecoration(hintText: "Nom")),
-                TextField(controller: _prenomController, decoration: InputDecoration(hintText: "Prénom")),
-                TextField(controller: _telephoneController, decoration: InputDecoration(hintText: "Téléphone")),
-                TextField(controller: _emailController, decoration: InputDecoration(hintText: "Email")),
+                TextField(
+                    controller: _nomController,
+                    decoration: InputDecoration(hintText: "Nom")),
+                TextField(
+                    controller: _prenomController,
+                    decoration: InputDecoration(hintText: "Prénom")),
+                TextField(
+                    controller: _telephoneController,
+                    decoration: InputDecoration(hintText: "Téléphone")),
+                TextField(
+                    controller: _emailController,
+                    decoration: InputDecoration(hintText: "Email")),
               ],
             ),
           ),
@@ -124,8 +146,10 @@ class _PersonnelPageState extends State<PersonnelPage> {
     );
   }
 
-  void _addNewPersonnel(String nom, String prenom, String telephone, String email) {
+  void _addNewPersonnel(
+      String nom, String prenom, String telephone, String email) {
     String identifiant = nom.toLowerCase() + prenom[0].toLowerCase();
+    String defaultPassword = "123456";
     Personnel newPersonnel = Personnel(
       id: '',
       identifiant: identifiant,
@@ -133,23 +157,56 @@ class _PersonnelPageState extends State<PersonnelPage> {
       prenom: prenom,
       email: email,
       telephone: telephone,
-      typeCompte: 'Standard', // Ajustez selon votre logique
+      typeCompte: 'Standard',
       estSuperviseur: false,
-      entrepriseId: widget.entrepriseId, estControleur: false,
+      entrepriseId: widget.entrepriseId,
+      estControleur: false,
     );
-    FirebaseFirestore.instance.collection('personnel').add(newPersonnel.toMap());
-    setState(() {
-      personnelList.add(newPersonnel);
-      _filterPersonnel(searchController.text); // Mettre à jour la liste affichée après l'ajout
+
+    FirebaseFirestore.instance
+        .collection('personnel')
+        .add(newPersonnel.toMap())
+        .then((docRef) {
+      newPersonnel.id = docRef.id;
+      FirebaseFirestore.instance.collection('auth').add({
+        'identifiant': identifiant,
+        'password': defaultPassword,
+      }).then((_) {
+        setState(() {
+          personnelList.add(newPersonnel);
+          _filterPersonnel(searchController.text);
+        });
+        _showConfirmationDialog(nom, prenom, defaultPassword);
+      });
     });
   }
 
-
+  void _showConfirmationDialog(String nom, String prenom, String password) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Compte Créé'),
+          content: Text(
+              'Le compte de $nom $prenom a été créé avec succès. \nIdentifiant : ${nom.toLowerCase() + prenom[0].toLowerCase()} \nMot de passe : $password'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void _showPersonnelOptionsDialog(Personnel personnel) {
     final _nomController = TextEditingController(text: personnel.nom);
     final _prenomController = TextEditingController(text: personnel.prenom);
-    final _telephoneController = TextEditingController(text: personnel.telephone);
+    final _telephoneController =
+    TextEditingController(text: personnel.telephone);
     final _emailController = TextEditingController(text: personnel.email);
     bool estSuperviseur = personnel.estSuperviseur;
     bool estControleur = personnel.estControleur;
@@ -165,10 +222,18 @@ class _PersonnelPageState extends State<PersonnelPage> {
               content: SingleChildScrollView(
                 child: Column(
                   children: <Widget>[
-                    TextField(controller: _nomController, decoration: InputDecoration(hintText: "Nom")),
-                    TextField(controller: _prenomController, decoration: InputDecoration(hintText: "Prénom")),
-                    TextField(controller: _telephoneController, decoration: InputDecoration(hintText: "Téléphone")),
-                    TextField(controller: _emailController, decoration: InputDecoration(hintText: "Email")),
+                    TextField(
+                        controller: _nomController,
+                        decoration: InputDecoration(hintText: "Nom")),
+                    TextField(
+                        controller: _prenomController,
+                        decoration: InputDecoration(hintText: "Prénom")),
+                    TextField(
+                        controller: _telephoneController,
+                        decoration: InputDecoration(hintText: "Téléphone")),
+                    TextField(
+                        controller: _emailController,
+                        decoration: InputDecoration(hintText: "Email")),
                     SwitchListTile(
                       title: Text('Est Superviseur'),
                       value: estSuperviseur,
@@ -183,35 +248,26 @@ class _PersonnelPageState extends State<PersonnelPage> {
                         setState(() => estControleur = value);
                       },
                     ),
-                    FutureBuilder<List<Residence>>(
-                      future: FirebaseFirestore.instance.collection('residences')
-                          .where('entrepriseId', isEqualTo: widget.entrepriseId)
-                          .get()
-                          .then((snapshot) =>
-                          snapshot.docs.map((doc) => Residence.fromFirestore(doc)).toList()),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) return CircularProgressIndicator();
-                        return DropdownButton<String>(
-                          value: selectedResidenceId,
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              selectedResidenceId = newValue;
-                            });
-                          },
-                          items: <DropdownMenuItem<String>>[
-                            DropdownMenuItem<String>(
-                              value: null,
-                              child: Text('Aucune résidence'),
-                            ),
-                            ...snapshot.data!.map<DropdownMenuItem<String>>((Residence residence) {
+                    DropdownButton<String>(
+                      value: selectedResidenceId,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedResidenceId = newValue;
+                        });
+                      },
+                      items: <DropdownMenuItem<String>>[
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Aucune résidence'),
+                        ),
+                        ...residences.map<DropdownMenuItem<String>>(
+                                (Residence residence) {
                               return DropdownMenuItem<String>(
                                 value: residence.id,
                                 child: Text(residence.nom),
                               );
                             }).toList(),
-                          ],
-                        );
-                      },
+                      ],
                     ),
                   ],
                 ),
@@ -224,7 +280,10 @@ class _PersonnelPageState extends State<PersonnelPage> {
                 TextButton(
                   child: Text('Enregistrer'),
                   onPressed: () async {
-                    await FirebaseFirestore.instance.collection('personnel').doc(personnel.id).update({
+                    await FirebaseFirestore.instance
+                        .collection('personnel')
+                        .doc(personnel.id)
+                        .update({
                       'nom': _nomController.text,
                       'prenom': _prenomController.text,
                       'telephone': _telephoneController.text,
@@ -234,16 +293,21 @@ class _PersonnelPageState extends State<PersonnelPage> {
                       'residenceAffectee': selectedResidenceId,
                     });
 
-                    // Retirer le personnel de l'ancienne résidence
-                    if (personnel.residenceAffectee != null && personnel.residenceAffectee != selectedResidenceId) {
-                      await FirebaseFirestore.instance.collection('residences').doc(personnel.residenceAffectee!).update({
+                    if (personnel.residenceAffectee != null &&
+                        personnel.residenceAffectee != selectedResidenceId) {
+                      await FirebaseFirestore.instance
+                          .collection('residences')
+                          .doc(personnel.residenceAffectee!)
+                          .update({
                         'personnelIds': FieldValue.arrayRemove([personnel.id])
                       });
                     }
 
-                    // Ajouter le personnel à la nouvelle résidence si nécessaire
                     if (selectedResidenceId != null) {
-                      await FirebaseFirestore.instance.collection('residences').doc(selectedResidenceId).update({
+                      await FirebaseFirestore.instance
+                          .collection('residences')
+                          .doc(selectedResidenceId)
+                          .update({
                         'personnelIds': FieldValue.arrayUnion([personnel.id])
                       });
                     }
@@ -262,15 +326,17 @@ class _PersonnelPageState extends State<PersonnelPage> {
                   },
                 ),
                 ElevatedButton(
-                  child: Text('Supprimer', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(primary: Colors.red),
+                  child: Text('Supprimer',
+                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   onPressed: () {
                     showDialog(
                       context: context,
                       builder: (BuildContext context) {
                         return AlertDialog(
                           title: Text('Confirmer la suppression'),
-                          content: Text('Voulez-vous vraiment supprimer ce membre du personnel ?'),
+                          content: Text(
+                              'Voulez-vous vraiment supprimer ce membre du personnel ?'),
                           actions: <Widget>[
                             TextButton(
                               child: Text('Annuler'),
@@ -279,16 +345,26 @@ class _PersonnelPageState extends State<PersonnelPage> {
                             TextButton(
                               child: Text('Supprimer'),
                               onPressed: () {
-                                FirebaseFirestore.instance.collection('personnel').doc(personnel.id).delete().then((_) {
+                                FirebaseFirestore.instance
+                                    .collection('personnel')
+                                    .doc(personnel.id)
+                                    .delete()
+                                    .then((_) {
                                   setState(() {
-                                    personnelList.removeWhere((p) => p.id == personnel.id);
-                                    displayedPersonnelList.removeWhere((p) => p.id == personnel.id);
+                                    personnelList.removeWhere(
+                                            (p) => p.id == personnel.id);
+                                    displayedPersonnelList.removeWhere(
+                                            (p) => p.id == personnel.id);
                                   });
-                                  Navigator.of(context).pop(); // Ferme le dialogue de confirmation
-                                  Navigator.of(context).pop(); // Ferme le dialogue d'options
+                                  Navigator.of(context)
+                                      .pop(); // Ferme le dialogue de confirmation
+                                  Navigator.of(context)
+                                      .pop(); // Ferme le dialogue d'options
                                 }).catchError((error) {
-                                  print("Erreur lors de la suppression du personnel : $error");
-                                  Navigator.of(context).pop(); // Ferme le dialogue de confirmation
+                                  print(
+                                      "Erreur lors de la suppression du personnel : $error");
+                                  Navigator.of(context)
+                                      .pop(); // Ferme le dialogue de confirmation
                                 });
                               },
                             ),
@@ -329,7 +405,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
                 suffixIcon: Icon(Icons.search),
               ),
               onChanged: (value) {
-                setState(() {});
+                _filterPersonnel(value);
               },
             ),
           ),

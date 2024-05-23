@@ -1,7 +1,8 @@
 
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:smartboard/slaphscreen.dart';
 import 'firebase_options.dart'; // Assurez-vous que ce fichier est correctement généré
@@ -9,16 +10,14 @@ import 'firebase_options.dart'; // Assurez-vous que ce fichier est correctement 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialisation de Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Écouter les changements de l'état d'authentification avant de lancer l'application
   await FirebaseAuth.instance.authStateChanges().first;
 
-  //// this token is for debug purposes only
-  // print(await FirebaseMessaging.instance.getToken());
-  if (!kIsWeb) {
-
-  }
   runApp(MyApp());
 }
 

@@ -176,15 +176,14 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                 child: ElevatedButton(
                   onPressed: () async {
                     try {
-                      await _createPdf(widget.commande);
+                      await _createPdf(widget.commande); // Uncomment and implement this if needed
                     } catch (e) {
                       print('Erreur lors de la création du PDF: $e');
-                      // Vous pouvez également afficher une alerte à l'utilisateur ici
                     }
                   },
                   child: Text('Extraire le PDF', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    primary: Colors.black,
+                    backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
                 ),
@@ -193,12 +192,11 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                 padding: EdgeInsets.all(10),
                 child: ElevatedButton(
                   onPressed: () {
-                    // Logique pour modifier la commande
-                    _navigateToCommandeEditPage(widget.commande);
+                    // _navigateToCommandeEditPage(widget.commande); // Uncomment and implement this if needed
                   },
                   child: Text('Modifier la Commande', style: TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    primary: Colors.black,
+                    backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
                 ),
@@ -212,11 +210,9 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                 if (snapshot.hasError) {
                   return Center(child: Text("Erreur lors du chargement des données."));
                 }
-
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 }
-
                 Commande commande = Commande.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
                 return SingleChildScrollView(
                   child: Padding(
@@ -232,6 +228,8 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                         buildDataTable(commande),
                         SizedBox(height: 20),
                         buildSummaryTable(commande),
+                        SizedBox(height: 20),
+                        buildPersonnelTable(commande.residenceId),  // This is where the new personnel table is added
                       ],
                     ),
                   ),
@@ -344,4 +342,37 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
       ],
     );
   }
+
+
+  Widget buildPersonnelTable(String residenceId) {
+    return FutureBuilder<List<Personnel>>(
+      future: _fetchPersonnel(residenceId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Text('Erreur ou données non disponibles');
+        }
+        var personnelList = snapshot.data!;
+        return DataTable(
+          columns: const [
+            DataColumn(label: Text('Nom')),
+            DataColumn(label: Text('Prénom')),
+            DataColumn(label: Text('Téléphone')),
+          ],
+          rows: personnelList.map((personnel) => DataRow(
+            cells: [
+              DataCell(Text(personnel.nom)),
+              DataCell(Text(personnel.prenom)),
+              DataCell(Text(personnel.telephone)),
+            ],
+          )).toList(),
+        );
+      },
+    );
+  }
+
+
 }
+

@@ -65,17 +65,25 @@ class _SelectionAppartementPageState extends State<SelectionAppartementPage> {
   }
 
   void _onSuivantPressed() {
+    if (selectedDate == null) {
+      // Appelle la fonction de sélection de date si aucune date n'est sélectionnée
+      _selectDate(context);
+      return; // Retourne pour éviter de continuer l'exécution de cette fonction
+    }
+
+    // Continue avec la vérification des appartements sélectionnés
     List<Appartement> selected = appartements
         .where((appart) => selectedAppartements[appart.id] ?? false)
         .toList();
 
-    if (selectedDate == null || selected.isEmpty) {
+    if (selected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Veuillez sélectionner une date et au moins un appartement.')),
+        SnackBar(content: Text('Veuillez sélectionner au moins un appartement.')),
       );
       return;
     }
 
+    // Si tout est en ordre, navigue à la page suivante
     Navigator.push(
       context,
       MaterialPageRoute(

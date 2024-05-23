@@ -5,10 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:smartboard/creer_commande.dart';
 import 'package:smartboard/validation_menage_page.dart';
 import 'historique_commande_page.dart';
-import 'messagerie.dart';
 import 'models/commande.dart';
 import 'models/entreprise.dart';
-
 
 class HomePage extends StatelessWidget {
   final String entrepriseId;
@@ -23,10 +21,6 @@ class HomePage extends StatelessWidget {
     }
     return '';
   }
-
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -50,10 +44,7 @@ class HomePage extends StatelessWidget {
                 },
               ),
               Spacer(),
-              IconButton(
-                icon: Icon(Icons.send_outlined),
-                onPressed: () => _navigateToMessagerieIfAdmin(context),
-              ),
+
             ],
           ),
         ) : null,
@@ -155,47 +146,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
-void _navigateToMessagerieIfAdmin(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      TextEditingController passwordController = TextEditingController();
-      return AlertDialog(
-        title: Text('Mot de Passe Administrateur'),
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: InputDecoration(hintText: "Entrez le mot de passe"),
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: Text('Annuler'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          TextButton(
-            child: Text('OK'),
-            onPressed: () {
-              if (passwordController.text == '2233') {
-                Navigator.of(context).pop();
-                Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage()));
-              } else {
-                // Afficher une erreur ou fermer la boîte de dialogue
-              }
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
-
-
-
-
-
 
   class CommandesEnCoursWidget extends StatelessWidget {
   final String entrepriseId;
