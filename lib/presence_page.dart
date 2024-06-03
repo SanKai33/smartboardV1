@@ -79,44 +79,64 @@ class _PresencePageState extends State<PresencePage> {
 
   Future<void> _generatePdfForDate(DateTime date) async {
     final pdf = pw.Document();
-    List<pw.Widget> widgets = [];
 
-    // Ajouter un titre avec la date
-    widgets.add(pw.Header(level: 0, text: 'Rapport de présence - ${DateFormat('dd/MM/yyyy').format(date)}'));
+    final data = await _fetchPresenceData(date);
 
-    var residencesSnapshot = await FirebaseFirestore.instance.collection('residences')
-        .where('entrepriseId', isEqualTo: widget.entrepriseId)
-        .get();
-
-    for (var residenceDoc in residencesSnapshot.docs) {
-      var residence = Residence.fromFirestore(residenceDoc);
-      var personnelsSnapshot = await FirebaseFirestore.instance.collection('personnel')
-          .where(FieldPath.documentId, whereIn: residence.personnelIds)
-          .get();
-
-      List<List<String>> personnelData = [
-        <String>['Nom', 'Prénom', 'Téléphone', 'Présent Matin', 'Présent Après-midi'],
-      ];
-
-      for (var personnelDoc in personnelsSnapshot.docs) {
-        var personnel = Personnel.fromFirestore(personnelDoc);
-        var presentMorning = _presentMorning[personnelDoc.id] == true ? 'Oui' : 'Non';
-        var presentAfternoon = _presentAfternoon[personnelDoc.id] == true ? 'Oui' : 'Non';
-        personnelData.add([personnel.nom, personnel.prenom, personnel.telephone, presentMorning, presentAfternoon]);
-      }
-
-      widgets.add(pw.Header(level: 1, text: residence.nom));
-      widgets.add(pw.Paragraph(text: "Adresse: ${residence.adresse}"));
-      widgets.add(pw.Table.fromTextArray(data: personnelData));
-      widgets.add(pw.Divider());
-    }
-
-    pdf.addPage(pw.MultiPage(pageFormat: PdfPageFormat.a4, build: (pw.Context context) => widgets));
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return <pw.Widget>[
+            pw.Header(level: 0, child: pw.Text('Rapport de présence')),
+            pw.Paragraph(text: 'Date: ${DateFormat('dd/MM/yyyy').format(date)}'),
+            pw.Paragraph(text: 'Entreprise ID: ${widget.entrepriseId}'),
+            pw.Table.fromTextArray(
+              context: context,
+              data: <List<String>>[
+                <String>['Résidence', 'Nom', 'Prénom', 'Téléphone', 'Présent Matin', 'Présent Après-midi'],
+                ...data,
+              ],
+            ),
+          ];
+        },
+      ),
+    );
 
     final output = await getTemporaryDirectory();
     final file = File('${output.path}/Rapport_${DateFormat('yyyy-MM-dd').format(date)}.pdf');
     await file.writeAsBytes(await pdf.save());
     await Printing.sharePdf(bytes: await pdf.save(), filename: 'Rapport_${DateFormat('yyyy-MM-dd').format(date)}.pdf');
+  }
+
+  Future<List<List<String>>> _fetchPresenceData(DateTime date) async {
+    List<List<String>> data = [];
+    var residencesSnapshot = await _firestore.collection('residences')
+        .where('entrepriseId', isEqualTo: widget.entrepriseId)
+        .get();
+
+    for (var residenceDoc in residencesSnapshot.docs) {
+      var residence = Residence.fromFirestore(residenceDoc);
+      var personnelsSnapshot = await _firestore.collection('personnel')
+          .where(FieldPath.documentId, whereIn: residence.personnelIds)
+          .get();
+
+      for (var personnelDoc in personnelsSnapshot.docs) {
+        var personnel = Personnel.fromFirestore(personnelDoc);
+        var presentMorning = _presentMorning[personnelDoc.id] == true ? 'Oui' : 'Non';
+        var presentAfternoon = _presentAfternoon[personnelDoc.id] == true ? 'Oui' : 'Non';
+        data.add([
+          residence.nom,
+          personnel.nom,
+          personnel.prenom,
+          personnel.telephone,
+          presentMorning,
+          presentAfternoon
+        ]);
+      }
+    }
+
+    return data;
   }
 
   void _validerPresence(String personnelId, bool isAfternoon) async {

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/models/personnel.dart';
+import 'models/client.dart';
 import 'models/residence.dart';
 
 class PersonnelPage extends StatefulWidget {
@@ -93,6 +94,37 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _showAddPersonnelDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Ajouter un nouveau'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                ListTile(
+                  title: Text('Ajouter un agent'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showNewAgentDialog();
+                  },
+                ),
+                ListTile(
+                  title: Text('Ajouter un client'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showNewClientDialog();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showNewAgentDialog() {
     final _nomController = TextEditingController();
     final _prenomController = TextEditingController();
     final _telephoneController = TextEditingController();
@@ -136,6 +168,84 @@ class _PersonnelPageState extends State<PersonnelPage> {
                   _prenomController.text,
                   _telephoneController.text,
                   _emailController.text,
+                  'agent',
+                );
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showNewClientDialog() {
+    final _nomController = TextEditingController();
+    final _prenomController = TextEditingController();
+    final _telephoneController = TextEditingController();
+    final _emailController = TextEditingController();
+    String? selectedResidenceId;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Ajouter un nouveau client'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                TextField(
+                    controller: _nomController,
+                    decoration: InputDecoration(hintText: "Nom")),
+                TextField(
+                    controller: _prenomController,
+                    decoration: InputDecoration(hintText: "Prénom")),
+                TextField(
+                    controller: _telephoneController,
+                    decoration: InputDecoration(hintText: "Téléphone")),
+                TextField(
+                    controller: _emailController,
+                    decoration: InputDecoration(hintText: "Email")),
+                DropdownButton<String>(
+                  value: selectedResidenceId,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedResidenceId = newValue;
+                    });
+                  },
+                  items: <DropdownMenuItem<String>>[
+                    DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Aucune résidence'),
+                    ),
+                    ...residences.map<DropdownMenuItem<String>>(
+                            (Residence residence) {
+                          return DropdownMenuItem<String>(
+                            value: residence.id,
+                            child: Text(residence.nom),
+                          );
+                        }).toList(),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Enregistrer'),
+              onPressed: () {
+                _addNewClient(
+                  _nomController.text,
+                  _prenomController.text,
+                  _telephoneController.text,
+                  _emailController.text,
+                  selectedResidenceId,
                 );
                 Navigator.of(context).pop();
               },
@@ -147,7 +257,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _addNewPersonnel(
-      String nom, String prenom, String telephone, String email) {
+      String nom, String prenom, String telephone, String email, String typeCompte) {
     String identifiant = nom.toLowerCase() + prenom[0].toLowerCase();
     String defaultPassword = "123456";
     Personnel newPersonnel = Personnel(
@@ -157,7 +267,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
       prenom: prenom,
       email: email,
       telephone: telephone,
-      typeCompte: 'Standard',
+      typeCompte: typeCompte,
       estSuperviseur: false,
       entrepriseId: widget.entrepriseId,
       estControleur: false,
@@ -181,6 +291,35 @@ class _PersonnelPageState extends State<PersonnelPage> {
     });
   }
 
+  void _addNewClient(
+      String nom, String prenom, String telephone, String email, String? residenceId) {
+    Client newClient = Client(
+      id: '',
+      nom: nom,
+      prenom: prenom,
+      email: email,
+      telephone: telephone,
+      entrepriseId: widget.entrepriseId,
+      residenceId: residenceId,
+    );
+
+    FirebaseFirestore.instance
+        .collection('clients')
+        .add(newClient.toMap())
+        .then((docRef) {
+      newClient.id = docRef.id;
+      if (residenceId != null) {
+        FirebaseFirestore.instance.collection('residences').doc(residenceId).update({
+          'personnelIds': FieldValue.arrayUnion([newClient.id])
+        });
+      }
+      setState(() {
+        _filterPersonnel(searchController.text);
+      });
+      _showClientConfirmationDialog(nom, prenom);
+    });
+  }
+
   void _showConfirmationDialog(String nom, String prenom, String password) {
     showDialog(
       context: context,
@@ -189,6 +328,26 @@ class _PersonnelPageState extends State<PersonnelPage> {
           title: Text('Compte Créé'),
           content: Text(
               'Le compte de $nom $prenom a été créé avec succès. \nIdentifiant : ${nom.toLowerCase() + prenom[0].toLowerCase()} \nMot de passe : $password'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showClientConfirmationDialog(String nom, String prenom) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Client Créé'),
+          content: Text('Le client $nom $prenom a été créé avec succès.'),
           actions: <Widget>[
             TextButton(
               child: Text('OK'),
@@ -468,8 +627,14 @@ class _PersonnelPageState extends State<PersonnelPage> {
                               ],
                             ),
                             children: personnelDeCetteResidence.map((personnel) {
+                              bool isClient = personnel.typeCompte == 'client';
                               return ListTile(
-                                title: Text(personnel.nom + " " + personnel.prenom),
+                                title: Text(
+                                  personnel.nom + " " + personnel.prenom,
+                                  style: isClient
+                                      ? TextStyle(color: Colors.blue[900], fontWeight: FontWeight.bold)
+                                      : null,
+                                ),
                                 subtitle: Text(personnel.telephone),
                                 onTap: () => _showPersonnelOptionsDialog(personnel),
                               );
