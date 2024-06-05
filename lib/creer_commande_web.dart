@@ -478,7 +478,7 @@ class DetailsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Appartement ${appartement.numero}', style: Theme.of(context).textTheme.headline6),
+          Text('Appartement ${appartement.numero}', style: Theme.of(context).textTheme.headlineLarge),
           // Complétez avec d'autres détails de l'appartement
         ],
       ),
