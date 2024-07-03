@@ -1,24 +1,23 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:smartboard/appAgent/parametrer_commpte_agent.dart';
+import 'package:smartboard/client/parametrer_compte_client.dart';
+
 import '../calendar_page.dart';
 import '../messagerie.dart';
 import '../notifications_page.dart';
-import 'home_page_agent.dart';
+import 'home_page_client.dart';
 
-class MainScreenAgent extends StatefulWidget {
-  final String entrepriseId;
-  final String agentId;
+class MainScreenClient extends StatefulWidget {
   final String clientId;
 
-  MainScreenAgent({required this.entrepriseId, required this.agentId, required this.clientId});
+  MainScreenClient({required this.clientId});
 
   @override
-  _MainScreenAgentState createState() => _MainScreenAgentState();
+  _MainScreenClientState createState() => _MainScreenClientState();
 }
 
-class _MainScreenAgentState extends State<MainScreenAgent> {
+class _MainScreenClientState extends State<MainScreenClient> {
   int _selectedIndex = 0;
   late List<Widget> _widgetOptions;
 
@@ -26,9 +25,9 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
   void initState() {
     super.initState();
     _widgetOptions = [
-      HomePageAgent(entrepriseId: widget.entrepriseId),
+      HomePageClient(clientId: widget.clientId, entrepriseId: '',),
       CalendarPage(),
-      NotificationsPage(entrepriseId: widget.entrepriseId, clientId: widget.clientId,),
+      NotificationsPage(clientId: widget.clientId, entrepriseId: '',),
     ];
   }
 
@@ -57,10 +56,10 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
               onSelected: (int index) {
                 switch (index) {
                   case 6:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage(currentEntrepriseId: widget.entrepriseId, currentClientId: '',)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage(currentClientId: widget.clientId, currentEntrepriseId: '',)));
                     break;
                   case 7:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ParametreCompteAgent(agentId: widget.agentId)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => ParametreCompteClient(clientId: widget.clientId)));
                     break;
                   default:
                     break;
@@ -109,3 +108,5 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
     );
   }
 }
+
+

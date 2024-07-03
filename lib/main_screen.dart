@@ -2,10 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/messagerie.dart';
 import 'package:smartboard/parametrer_compte.dart';
+
 import 'package:smartboard/presence_page.dart';
-import 'package:smartboard/tarrification_page.dart';
+import 'commande_passé_web.dart';
 import 'home_page.dart';
-import 'calendar_page.dart';
+
 import 'residences_page.dart';
 import 'notifications_page.dart';
 import 'personnel_page.dart';
@@ -14,7 +15,7 @@ class MainScreen extends StatefulWidget {
   final String entrepriseId;
   final String agentId;
 
-  MainScreen({required this.entrepriseId, required this.agentId, });
+  MainScreen({required this.entrepriseId, required this.agentId});
 
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -23,14 +24,19 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   late List<Widget> _widgetOptions;
+  List<Map<String, String>> _currentOrders = []; // Simulated list of orders
 
   @override
   void initState() {
     super.initState();
     _widgetOptions = [
       HomePage(entrepriseId: widget.entrepriseId),
-      CalendarPage(),
-      NotificationsPage(entrepriseId: widget.entrepriseId),
+      CommandePasseeWeb(entrepriseId: widget.entrepriseId),
+      NotificationsPage(entrepriseId: widget.entrepriseId, clientId: ''),
+      PersonnelPage(entrepriseId: widget.entrepriseId),
+      PresencePage(entrepriseId: widget.entrepriseId),
+      ResidencesPage(entrepriseId: widget.entrepriseId),
+      ParametreCompte(entrepriseId: widget.entrepriseId),
     ];
   }
 
@@ -43,12 +49,13 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: kIsWeb ? _buildWebAppBar() : null,
+      appBar: kIsWeb ? _buildWebAppBar() : _buildMobileAppBar(),
       body: IndexedStack(
         index: _selectedIndex,
         children: _widgetOptions,
       ),
-      bottomNavigationBar: !kIsWeb ? BottomNavigationBar(
+      bottomNavigationBar: !kIsWeb
+          ? BottomNavigationBar(
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
@@ -65,16 +72,13 @@ class _MainScreenState extends State<MainScreen> {
                     Navigator.push(context, MaterialPageRoute(builder: (context) => PresencePage(entrepriseId: widget.entrepriseId)));
                     break;
                   case 6:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage(currentEntrepriseId: widget.entrepriseId,)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage(currentEntrepriseId: widget.entrepriseId, currentClientId: '')));
                     break;
                   case 7:
                     Navigator.push(context, MaterialPageRoute(builder: (context) => ParametreCompte(entrepriseId: widget.entrepriseId)));
                     break;
                   case 8:
                     Navigator.push(context, MaterialPageRoute(builder: (context) => PersonnelPage(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 9:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => TarificationPage(entrepriseId: widget.entrepriseId,)));
                     break;
                   default:
                     break;
@@ -86,7 +90,6 @@ class _MainScreenState extends State<MainScreen> {
                 PopupMenuItem<int>(value: 6, child: Row(children: [Icon(Icons.message, color: Colors.grey), SizedBox(width: 10), Text('Messagerie')])),
                 PopupMenuItem<int>(value: 7, child: Row(children: [Icon(Icons.settings, color: Colors.grey), SizedBox(width: 10), Text('Paramètres')])),
                 PopupMenuItem<int>(value: 8, child: Row(children: [Icon(Icons.group, color: Colors.grey), SizedBox(width: 10), Text('Personnel')])),
-                PopupMenuItem<int>(value: 9, child: Row(children: [Icon(Icons.local_atm, color: Colors.grey), SizedBox(width: 10), Text('Tarif')]))
               ],
             ),
             label: 'Plus',
@@ -98,19 +101,55 @@ class _MainScreenState extends State<MainScreen> {
         onTap: (index) {
           if (index < 3) _onItemTapped(index);
         },
-      ) : null,
+      )
+          : null,
     );
   }
 
   AppBar _buildWebAppBar() {
     return AppBar(
-      title: Text('Smartboard'),
+      automaticallyImplyLeading: false, // Remove the back button
+      title: Row(
+        children: [
+          Image.asset('assets/images/logo.png', height: 40),
+          SizedBox(width: 10),
+          Text('Smartboard'),
+          Spacer(),
+          if (_currentOrders.isNotEmpty)
+            Text(
+              'Commande en cours',
+              style: TextStyle(fontSize: 18, color: Colors.red),
+            ),
+        ],
+      ),
       actions: <Widget>[
         _buildWebMenuButton('Home', Icons.home, 0),
-        _buildWebMenuButton('Calendar', Icons.calendar_today, 1),
+        _buildWebMenuButton('Historique', Icons.history, 1),
         _buildWebMenuButton('Notifications', Icons.notifications, 2),
-        IconButton(icon: Icon(Icons.qr_code), onPressed: () => _onItemTapped(5)),
+        _buildWebMenuButton('Personnel', Icons.group, 3),
+        _buildWebMenuButton('Présence', Icons.access_time, 4),
+        _buildWebMenuButton('Résidences', Icons.apartment, 5),
+        _buildWebMenuButton('Paramètres', Icons.settings, 6),
       ],
+    );
+  }
+
+  AppBar _buildMobileAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: false, // Remove the back button
+      title: Row(
+        children: [
+          Image.asset('assets/images/logo.png', height: 40),
+          SizedBox(width: 10),
+          Text('Smartboard'),
+          Spacer(),
+          if (_currentOrders.isNotEmpty)
+            Text(
+              'Commande en cours',
+              style: TextStyle(fontSize: 18, color: Colors.red),
+            ),
+        ],
+      ),
     );
   }
 
@@ -127,6 +166,3 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
-
-

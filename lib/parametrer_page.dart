@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -27,8 +27,6 @@ class _ParametrerPageState extends State<ParametrerPage> {
   File? _image;
   final picker = ImagePicker();
 
-
-
   @override
   void initState() {
     super.initState();
@@ -46,14 +44,12 @@ class _ParametrerPageState extends State<ParametrerPage> {
       case 'delete':
         _supprimerResidence();
         break;
-    // Autres cas si nécessaire...
     }
   }
 
   void _supprimerResidence() async {
     if (widget.residence?.id != null) {
       await FirebaseFirestore.instance.collection('residences').doc(widget.residence!.id).delete();
-      // Supprimer également tous les appartements associés à cette résidence si nécessaire
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Résidence supprimée')));
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ResidencesPage(entrepriseId: widget.entrepriseId)));
     } else {
@@ -93,10 +89,8 @@ class _ParametrerPageState extends State<ParametrerPage> {
         imageUrl = await uploadImage(_image!);
       }
 
-      // Créer ou obtenir l'ID de la résidence
       final residenceId = widget.residence?.id ?? FirebaseFirestore.instance.collection('residences').doc().id;
 
-      // Enregistrer ou mettre à jour la résidence
       await FirebaseFirestore.instance.collection('residences').doc(residenceId).set({
         'nom': _nomResidenceController.text,
         'adresse': _adresseResidenceController.text,
@@ -104,7 +98,6 @@ class _ParametrerPageState extends State<ParametrerPage> {
         'imageUrl': imageUrl,
       });
 
-      // Enregistrer ou mettre à jour les appartements
       for (var appartement in appartements) {
         await FirebaseFirestore.instance.collection('appartements').doc(appartement.id).set({
           ...appartement.toMap(),
@@ -112,15 +105,11 @@ class _ParametrerPageState extends State<ParametrerPage> {
         });
       }
 
-      // Rediriger vers la page des résidences
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ResidencesPage(entrepriseId: widget.entrepriseId)));
     } catch (e) {
-      // Afficher une erreur en cas d'échec
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur lors de l'enregistrement: $e")));
     }
   }
-
-
 
   void _loadAppartements() async {
     if (widget.residence?.id == null) return;
@@ -135,7 +124,7 @@ class _ParametrerPageState extends State<ParametrerPage> {
             .map((doc) => Appartement.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList();
         isLoading = false;
-        appartements.sort((a, b) => a.numero.compareTo(b.numero)); // Tri par numéro
+        appartements.sort((a, b) => a.numero.compareTo(b.numero));
       });
     }).catchError((error) {
       print('Erreur lors du chargement des appartements: $error');
@@ -241,7 +230,6 @@ class _ParametrerPageState extends State<ParametrerPage> {
   }
 
   void _ouvrirSelectionAdresse() async {
-    // Remplacez 'SelectAddressScreen' par le nom de votre écran de sélection d'adresse
     final selectedAddress = await Navigator.push(context, MaterialPageRoute(builder: (context) => SelectAddressScreen()));
     if (selectedAddress != null) {
       _adresseResidenceController.text = selectedAddress;
@@ -261,7 +249,6 @@ class _ParametrerPageState extends State<ParametrerPage> {
                 value: 'delete',
                 child: Text('Supprimer'),
               ),
-              // Ajoutez d'autres options de menu ici si nécessaire
             ],
           ),
         ],
@@ -300,33 +287,31 @@ class _ParametrerPageState extends State<ParametrerPage> {
                 ],
               ),
             ),
-            kIsWeb ? _buildWebLayout() : _buildMobileLayout(),
+            _buildMobileLayout(),
           ],
         ),
       ),
-      floatingActionButton: !kIsWeb ? FloatingActionButton(
+      floatingActionButton: FloatingActionButton(
         onPressed: _enregistrerResidence,
         child: Icon(Icons.save),
-      ) : null,
+      ),
     );
   }
-
 
   Widget _buildMobileLayout() {
     return ListView.builder(
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
-      itemCount: appartements.length + 1, // +1 pour inclure l'en-tête
+      itemCount: appartements.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          // En-tête avec le bouton d'ajout et le compteur
           return Padding(
             padding: EdgeInsets.all(8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 ElevatedButton.icon(
-                  onPressed: _ajouterNouvelAppartement, // Mettez à jour pour ajouter un appartement
+                  onPressed: _ajouterNouvelAppartement,
                   icon: Icon(Icons.add),
                   label: Text('Ajouter un appartement'),
                 ),
@@ -342,62 +327,61 @@ class _ParametrerPageState extends State<ParametrerPage> {
           );
         }
 
-        // Ajustement de l'index pour accéder aux appartements
         final appartement = appartements[index - 1];
 
         return Card(
           margin: EdgeInsets.all(8.0),
           child: ListTile(
-            leading: Icon(Icons.apartment), // Icône représentant un appartement
+            leading: Icon(Icons.apartment),
             title: Text('Appartement ${appartement.numero}'),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    Icon(Icons.business, size: 16), // Icône pour le bâtiment
+                    Icon(Icons.business, size: 16),
                     SizedBox(width: 4),
                     Text('Bâtiment: ${appartement.batiment}'),
                   ],
                 ),
                 Row(
                   children: <Widget>[
-                    Icon(Icons.category, size: 16), // Icône pour la typologie
+                    Icon(Icons.category, size: 16),
                     SizedBox(width: 4),
                     Text('Typologie: ${appartement.typologie}'),
                   ],
                 ),
                 Row(
                   children: <Widget>[
-                    Icon(Icons.person, size: 16), // Icône pour le nombre de personnes
+                    Icon(Icons.person, size: 16),
                     SizedBox(width: 4),
                     Text('Nombre de personnes: ${appartement.nombrePersonnes}'),
                   ],
                 ),
                 Row(
                   children: <Widget>[
-                    Icon(Icons.bed, size: 16), // Icône pour les lits simples
+                    Icon(Icons.bed, size: 16),
                     SizedBox(width: 4),
                     Text('Lits simples: ${appartement.nombreLitsSimples}'),
                   ],
                 ),
                 Row(
                   children: <Widget>[
-                    Icon(Icons.king_bed, size: 16), // Icône pour les lits doubles
+                    Icon(Icons.king_bed, size: 16),
                     SizedBox(width: 4),
                     Text('Lits doubles: ${appartement.nombreLitsDoubles}'),
                   ],
                 ),
                 Row(
                   children: <Widget>[
-                    Icon(Icons.bathtub, size: 16), // Icône pour les salles de bains
+                    Icon(Icons.bathtub, size: 16),
                     SizedBox(width: 4),
                     Text('Salles de bains: ${appartement.nombreSallesDeBains}'),
                   ],
                 ),
               ],
             ),
-            onTap: () => _showEditAppartementDialog(appartement), // Gestionnaire onTap
+            onTap: () => _showEditAppartementDialog(appartement),
           ),
         );
       },
@@ -405,57 +389,20 @@ class _ParametrerPageState extends State<ParametrerPage> {
   }
 
   void _ajouterNouvelAppartement() {
-    // Créez un nouvel appartement avec des données fictives ou récupérez les données via un formulaire
     Appartement nouvelAppartement = Appartement(
-      id: DateTime.now().toString(), // Juste un ID fictif pour l'exemple
+      id: DateTime.now().toString(),
       numero: 'App ${appartements.length + 1}',
       batiment: 'Bâtiment X',
       typologie: 'T2',
       nombrePersonnes: 2,
       nombreLitsSimples: 1,
       nombreLitsDoubles: 1,
-      nombreSallesDeBains: 1, residenceId: widget.residence!.id,
+      nombreSallesDeBains: 1,
+      residenceId: widget.residence!.id, ordre: 0,
     );
 
-    // Ajoutez le nouvel appartement à la liste et mettez à jour l'état
     setState(() {
       appartements.add(nouvelAppartement);
     });
   }
-
-
-
-
-  Widget _buildWebLayout() {
-  return DataTable(
-    columns: const [
-      DataColumn(label: Text('Numéro')),
-      DataColumn(label: Text('Bâtiment')),
-      DataColumn(label: Text('Typologie')),
-      DataColumn(label: Text('Nombre de personnes')),
-      // Ajoutez plus de colonnes si nécessaire
-    ],
-    rows: appartements.map((appartement) {
-      return DataRow(cells: [
-        DataCell(Text(appartement.numero)),
-        DataCell(Text(appartement.batiment)),
-        DataCell(Text(appartement.typologie)),
-        DataCell(Text(appartement.nombrePersonnes.toString())),
-        // Ajoutez plus de cellules si nécessaire
-      ]);
-    }).toList(),
-  );
 }
-
-
-}
-
-
-
-
-
-
-
-
-
-

@@ -58,7 +58,7 @@ class _AgentLoginPageState extends State<AgentLoginPage> {
 
         // Redirection vers MainScreenAgent
         Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => MainScreenAgent(entrepriseId: personnel.entrepriseId, agentId: personnel.id),
+          builder: (context) => MainScreenAgent(entrepriseId: personnel.entrepriseId, agentId: personnel.id, clientId: '',),
         ));
       } catch (e) {
         _showErrorDialog('Erreur de connexion');

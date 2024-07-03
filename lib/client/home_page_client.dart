@@ -12,7 +12,7 @@ import '../validation_menage_page.dart';
 class HomePageClient extends StatelessWidget {
   final String entrepriseId;
 
-  HomePageClient({required this.entrepriseId});
+  HomePageClient({required this.entrepriseId, required String clientId});
 
   Future<String> _fetchEntrepriseName(String entrepriseId) async {
     DocumentSnapshot snapshot = await FirebaseFirestore.instance.collection('entreprises').doc(entrepriseId).get();

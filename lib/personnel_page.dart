@@ -15,14 +15,17 @@ class PersonnelPage extends StatefulWidget {
 
 class _PersonnelPageState extends State<PersonnelPage> {
   List<Personnel> personnelList = [];
-  List<Personnel> displayedPersonnelList = [];
-  TextEditingController searchController = TextEditingController();
+  List<Personnel> filteredPersonnelList = [];
+  List<Client> clientList = [];
+  List<Client> filteredClientList = [];
   List<Residence> residences = [];
+  TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadExistingPersonnel();
+    _loadExistingClients();
     _loadResidences();
   }
 
@@ -45,26 +48,6 @@ class _PersonnelPageState extends State<PersonnelPage> {
     });
   }
 
-  Stream<List<Personnel>> _personnelStream() {
-    return FirebaseFirestore.instance
-        .collection('personnel')
-        .where('entrepriseId', isEqualTo: widget.entrepriseId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => Personnel.fromFirestore(doc))
-        .toList());
-  }
-
-  Stream<List<Residence>> _residencesStream() {
-    return FirebaseFirestore.instance
-        .collection('residences')
-        .where('entrepriseId', isEqualTo: widget.entrepriseId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => Residence.fromFirestore(doc))
-        .toList());
-  }
-
   void _loadExistingPersonnel() async {
     var collection = FirebaseFirestore.instance
         .collection('personnel')
@@ -75,21 +58,111 @@ class _PersonnelPageState extends State<PersonnelPage> {
         .toList();
     setState(() {
       personnelList = tempList;
-      displayedPersonnelList = tempList;
+      filteredPersonnelList = tempList;
     });
   }
 
-  void _filterPersonnel(String query) {
+  void _loadExistingClients() async {
+    var collection = FirebaseFirestore.instance
+        .collection('clients')
+        .where('entrepriseId', isEqualTo: widget.entrepriseId);
+    var querySnapshot = await collection.get();
+    var tempList = querySnapshot.docs
+        .map((doc) => Client.fromFirestore(doc))
+        .toList();
     setState(() {
-      displayedPersonnelList = query.isEmpty
-          ? personnelList
-          : personnelList
-          .where((personnel) =>
-      personnel.nom.toLowerCase().contains(query.toLowerCase()) ||
-          personnel.prenom
-              .toLowerCase()
-              .contains(query.toLowerCase()))
-          .toList();
+      clientList = tempList;
+      filteredClientList = tempList;
+    });
+  }
+
+  void _filterPersonnelAndClients(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        filteredPersonnelList = personnelList;
+        filteredClientList = clientList;
+      } else {
+        filteredPersonnelList = personnelList.where((personnel) =>
+        personnel.nom.toLowerCase().contains(query.toLowerCase()) ||
+            personnel.prenom.toLowerCase().contains(query.toLowerCase())).toList();
+        filteredClientList = clientList.where((client) =>
+        client.nom.toLowerCase().contains(query.toLowerCase()) ||
+            client.prenom.toLowerCase().contains(query.toLowerCase())).toList();
+      }
+    });
+  }
+
+  void _movePersonnel(Personnel personnel, String newResidenceId) async {
+    List<String> updatedResidences = List.from(personnel.residencesAffectees);
+    if (!updatedResidences.contains(newResidenceId)) {
+      updatedResidences.add(newResidenceId);
+    }
+
+    await FirebaseFirestore.instance
+        .collection('personnel')
+        .doc(personnel.id)
+        .update({'residencesAffectees': updatedResidences});
+    setState(() {
+      personnel.residencesAffectees = updatedResidences;
+      _filterPersonnelAndClients(searchController.text);
+    });
+  }
+
+  void _moveClient(Client client, String newResidenceId) async {
+    List<String> updatedResidences = List.from(client.residencesAffectees);
+    if (!updatedResidences.contains(newResidenceId)) {
+      updatedResidences.add(newResidenceId);
+    }
+
+    await FirebaseFirestore.instance
+        .collection('clients')
+        .doc(client.id)
+        .update({'residencesAffectees': updatedResidences});
+    setState(() {
+      client.residencesAffectees = updatedResidences;
+      _filterPersonnelAndClients(searchController.text);
+    });
+  }
+
+  Future<void> _updatePersonnel(Personnel personnel) async {
+    await FirebaseFirestore.instance
+        .collection('personnel')
+        .doc(personnel.id)
+        .update(personnel.toMap());
+  }
+
+  Future<void> _updateClient(Client client) async {
+    await FirebaseFirestore.instance
+        .collection('clients')
+        .doc(client.id)
+        .update(client.toMap());
+  }
+
+  Future<void> _deletePersonnelFromResidence(Personnel personnel, String residenceId) async {
+    List<String> updatedResidences = List.from(personnel.residencesAffectees);
+    updatedResidences.remove(residenceId);
+
+    await FirebaseFirestore.instance
+        .collection('personnel')
+        .doc(personnel.id)
+        .update({'residencesAffectees': updatedResidences});
+    setState(() {
+      personnel.residencesAffectees = updatedResidences;
+      _filterPersonnelAndClients(searchController.text);
+    });
+  }
+
+  Future<void> _deleteClientFromResidence(Client client, String residenceId) async {
+    List<String> updatedResidences = List.from(client.residencesAffectees);
+    updatedResidences.remove(residenceId);
+
+    await FirebaseFirestore.instance
+        .collection('clients')
+        .doc(client.id)
+        .update({'residencesAffectees': updatedResidences});
+    setState(() {
+      client.residencesAffectees = updatedResidences;
+      _filterPersonnelAndClients(searchController.text);
     });
   }
 
@@ -98,19 +171,19 @@ class _PersonnelPageState extends State<PersonnelPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Ajouter un nouveau'),
+          title: Text('Créer un nouveau compte'),
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
                 ListTile(
-                  title: Text('Ajouter un agent'),
+                  title: Text('Créer un agent'),
                   onTap: () {
                     Navigator.of(context).pop();
                     _showNewAgentDialog();
                   },
                 ),
                 ListTile(
-                  title: Text('Ajouter un client'),
+                  title: Text('Créer un client'),
                   onTap: () {
                     Navigator.of(context).pop();
                     _showNewClientDialog();
@@ -129,29 +202,43 @@ class _PersonnelPageState extends State<PersonnelPage> {
     final _prenomController = TextEditingController();
     final _telephoneController = TextEditingController();
     final _emailController = TextEditingController();
+    bool estSuperviseur = false;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Ajouter un nouvel agent'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                TextField(
-                    controller: _nomController,
-                    decoration: InputDecoration(hintText: "Nom")),
-                TextField(
-                    controller: _prenomController,
-                    decoration: InputDecoration(hintText: "Prénom")),
-                TextField(
-                    controller: _telephoneController,
-                    decoration: InputDecoration(hintText: "Téléphone")),
-                TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(hintText: "Email")),
-              ],
-            ),
+          title: Text('Créer un nouvel agent'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    TextField(
+                        controller: _nomController,
+                        decoration: InputDecoration(hintText: "Nom")),
+                    TextField(
+                        controller: _prenomController,
+                        decoration: InputDecoration(hintText: "Prénom")),
+                    TextField(
+                        controller: _telephoneController,
+                        decoration: InputDecoration(hintText: "Téléphone")),
+                    TextField(
+                        controller: _emailController,
+                        decoration: InputDecoration(hintText: "Email")),
+                    CheckboxListTile(
+                      title: Text("Superviseur"),
+                      value: estSuperviseur,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          estSuperviseur = value ?? false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           actions: <Widget>[
             TextButton(
@@ -169,6 +256,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
                   _telephoneController.text,
                   _emailController.text,
                   'agent',
+                  estSuperviseur,
                 );
                 Navigator.of(context).pop();
               },
@@ -184,51 +272,43 @@ class _PersonnelPageState extends State<PersonnelPage> {
     final _prenomController = TextEditingController();
     final _telephoneController = TextEditingController();
     final _emailController = TextEditingController();
-    String? selectedResidenceId;
+    bool estControleur = false;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Ajouter un nouveau client'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                TextField(
-                    controller: _nomController,
-                    decoration: InputDecoration(hintText: "Nom")),
-                TextField(
-                    controller: _prenomController,
-                    decoration: InputDecoration(hintText: "Prénom")),
-                TextField(
-                    controller: _telephoneController,
-                    decoration: InputDecoration(hintText: "Téléphone")),
-                TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(hintText: "Email")),
-                DropdownButton<String>(
-                  value: selectedResidenceId,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedResidenceId = newValue;
-                    });
-                  },
-                  items: <DropdownMenuItem<String>>[
-                    DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('Aucune résidence'),
+          title: Text('Créer un nouveau client'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    TextField(
+                        controller: _nomController,
+                        decoration: InputDecoration(hintText: "Nom")),
+                    TextField(
+                        controller: _prenomController,
+                        decoration: InputDecoration(hintText: "Prénom")),
+                    TextField(
+                        controller: _telephoneController,
+                        decoration: InputDecoration(hintText: "Téléphone")),
+                    TextField(
+                        controller: _emailController,
+                        decoration: InputDecoration(hintText: "Email")),
+                    CheckboxListTile(
+                      title: Text("Contrôleur"),
+                      value: estControleur,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          estControleur = value ?? false;
+                        });
+                      },
                     ),
-                    ...residences.map<DropdownMenuItem<String>>(
-                            (Residence residence) {
-                          return DropdownMenuItem<String>(
-                            value: residence.id,
-                            child: Text(residence.nom),
-                          );
-                        }).toList(),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
           actions: <Widget>[
             TextButton(
@@ -245,7 +325,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
                   _prenomController.text,
                   _telephoneController.text,
                   _emailController.text,
-                  selectedResidenceId,
+                  estControleur,
                 );
                 Navigator.of(context).pop();
               },
@@ -257,7 +337,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _addNewPersonnel(
-      String nom, String prenom, String telephone, String email, String typeCompte) {
+      String nom, String prenom, String telephone, String email, String typeCompte, bool estSuperviseur) {
     String identifiant = nom.toLowerCase() + prenom[0].toLowerCase();
     String defaultPassword = "123456";
     Personnel newPersonnel = Personnel(
@@ -268,9 +348,9 @@ class _PersonnelPageState extends State<PersonnelPage> {
       email: email,
       telephone: telephone,
       typeCompte: typeCompte,
-      estSuperviseur: false,
+      estSuperviseur: estSuperviseur,
+      residencesAffectees: [],
       entrepriseId: widget.entrepriseId,
-      estControleur: false,
     );
 
     FirebaseFirestore.instance
@@ -284,7 +364,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
       }).then((_) {
         setState(() {
           personnelList.add(newPersonnel);
-          _filterPersonnel(searchController.text);
+          _filterPersonnelAndClients(searchController.text);
         });
         _showConfirmationDialog(nom, prenom, defaultPassword);
       });
@@ -292,7 +372,7 @@ class _PersonnelPageState extends State<PersonnelPage> {
   }
 
   void _addNewClient(
-      String nom, String prenom, String telephone, String email, String? residenceId) {
+      String nom, String prenom, String telephone, String email, bool estControleur) {
     Client newClient = Client(
       id: '',
       nom: nom,
@@ -300,7 +380,8 @@ class _PersonnelPageState extends State<PersonnelPage> {
       email: email,
       telephone: telephone,
       entrepriseId: widget.entrepriseId,
-      residenceId: residenceId,
+      residencesAffectees: [],
+      estControleur: estControleur,
     );
 
     FirebaseFirestore.instance
@@ -308,13 +389,9 @@ class _PersonnelPageState extends State<PersonnelPage> {
         .add(newClient.toMap())
         .then((docRef) {
       newClient.id = docRef.id;
-      if (residenceId != null) {
-        FirebaseFirestore.instance.collection('residences').doc(residenceId).update({
-          'personnelIds': FieldValue.arrayUnion([newClient.id])
-        });
-      }
       setState(() {
-        _filterPersonnel(searchController.text);
+        clientList.add(newClient);
+        _filterPersonnelAndClients(searchController.text);
       });
       _showClientConfirmationDialog(nom, prenom);
     });
@@ -361,181 +438,244 @@ class _PersonnelPageState extends State<PersonnelPage> {
     );
   }
 
-  void _showPersonnelOptionsDialog(Personnel personnel) {
-    final _nomController = TextEditingController(text: personnel.nom);
-    final _prenomController = TextEditingController(text: personnel.prenom);
-    final _telephoneController =
-    TextEditingController(text: personnel.telephone);
+  Future<void> _confirmDeleteFromResidence(
+      BuildContext context, dynamic person, String residenceId) async {
+    String entityType = person is Personnel ? 'personnel' : 'client';
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmation de suppression'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Êtes-vous sûr de vouloir supprimer ce $entityType de la résidence sélectionnée ?'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Confirmer'),
+              onPressed: () {
+                if (person is Personnel) {
+                  _deletePersonnelFromResidence(person, residenceId);
+                } else if (person is Client) {
+                  _deleteClientFromResidence(person, residenceId);
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditPersonnelDialog(Personnel personnel) {
+    final _telephoneController = TextEditingController(text: personnel.telephone);
     final _emailController = TextEditingController(text: personnel.email);
-    bool estSuperviseur = personnel.estSuperviseur;
-    bool estControleur = personnel.estControleur;
-    String? selectedResidenceId = personnel.residenceAffectee;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Options pour ${personnel.nom} ${personnel.prenom}'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: <Widget>[
-                    TextField(
-                        controller: _nomController,
-                        decoration: InputDecoration(hintText: "Nom")),
-                    TextField(
-                        controller: _prenomController,
-                        decoration: InputDecoration(hintText: "Prénom")),
-                    TextField(
-                        controller: _telephoneController,
-                        decoration: InputDecoration(hintText: "Téléphone")),
-                    TextField(
-                        controller: _emailController,
-                        decoration: InputDecoration(hintText: "Email")),
-                    SwitchListTile(
-                      title: Text('Est Superviseur'),
-                      value: estSuperviseur,
-                      onChanged: (bool value) {
-                        setState(() => estSuperviseur = value);
-                      },
-                    ),
-                    SwitchListTile(
-                      title: Text('Est Contrôleur'),
-                      value: estControleur,
-                      onChanged: (bool value) {
-                        setState(() => estControleur = value);
-                      },
-                    ),
-                    DropdownButton<String>(
-                      value: selectedResidenceId,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedResidenceId = newValue;
-                        });
-                      },
-                      items: <DropdownMenuItem<String>>[
-                        DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Aucune résidence'),
-                        ),
-                        ...residences.map<DropdownMenuItem<String>>(
-                                (Residence residence) {
-                              return DropdownMenuItem<String>(
-                                value: residence.id,
-                                child: Text(residence.nom),
-                              );
-                            }).toList(),
-                      ],
-                    ),
-                  ],
+        return AlertDialog(
+          title: Text('Modifier les informations de l\'agent'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                TextField(
+                  controller: _telephoneController,
+                  decoration: InputDecoration(hintText: "Téléphone"),
                 ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('Annuler'),
-                  onPressed: () => Navigator.of(context).pop(),
+                TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(hintText: "Email"),
                 ),
                 TextButton(
-                  child: Text('Enregistrer'),
-                  onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection('personnel')
-                        .doc(personnel.id)
-                        .update({
-                      'nom': _nomController.text,
-                      'prenom': _prenomController.text,
-                      'telephone': _telephoneController.text,
-                      'email': _emailController.text,
-                      'estSuperviseur': estSuperviseur,
-                      'estControleur': estControleur,
-                      'residenceAffectee': selectedResidenceId,
-                    });
-
-                    if (personnel.residenceAffectee != null &&
-                        personnel.residenceAffectee != selectedResidenceId) {
-                      await FirebaseFirestore.instance
-                          .collection('residences')
-                          .doc(personnel.residenceAffectee!)
-                          .update({
-                        'personnelIds': FieldValue.arrayRemove([personnel.id])
-                      });
-                    }
-
-                    if (selectedResidenceId != null) {
-                      await FirebaseFirestore.instance
-                          .collection('residences')
-                          .doc(selectedResidenceId)
-                          .update({
-                        'personnelIds': FieldValue.arrayUnion([personnel.id])
-                      });
-                    }
-
-                    setState(() {
-                      personnel.nom = _nomController.text;
-                      personnel.prenom = _prenomController.text;
-                      personnel.telephone = _telephoneController.text;
-                      personnel.email = _emailController.text;
-                      personnel.estSuperviseur = estSuperviseur;
-                      personnel.estControleur = estControleur;
-                      personnel.residenceAffectee = selectedResidenceId;
-                    });
-
-                    Navigator.of(context).pop();
-                  },
-                ),
-                ElevatedButton(
-                  child: Text('Supprimer',
-                      style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: Text('Changer rôle'),
                   onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text('Confirmer la suppression'),
-                          content: Text(
-                              'Voulez-vous vraiment supprimer ce membre du personnel ?'),
-                          actions: <Widget>[
-                            TextButton(
-                              child: Text('Annuler'),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                            TextButton(
-                              child: Text('Supprimer'),
-                              onPressed: () {
-                                FirebaseFirestore.instance
-                                    .collection('personnel')
-                                    .doc(personnel.id)
-                                    .delete()
-                                    .then((_) {
-                                  setState(() {
-                                    personnelList.removeWhere(
-                                            (p) => p.id == personnel.id);
-                                    displayedPersonnelList.removeWhere(
-                                            (p) => p.id == personnel.id);
-                                  });
-                                  Navigator.of(context)
-                                      .pop(); // Ferme le dialogue de confirmation
-                                  Navigator.of(context)
-                                      .pop(); // Ferme le dialogue d'options
-                                }).catchError((error) {
-                                  print(
-                                      "Erreur lors de la suppression du personnel : $error");
-                                  Navigator.of(context)
-                                      .pop(); // Ferme le dialogue de confirmation
-                                });
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
+                    Navigator.of(context).pop();
+                    _showRoleDialogPersonnel(personnel);
                   },
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Enregistrer'),
+              onPressed: () {
+                setState(() {
+                  personnel.telephone = _telephoneController.text;
+                  personnel.email = _emailController.text;
+                  _updatePersonnel(personnel);
+                  Navigator.of(context).pop();
+                  _showValidationDialog('Les informations de l\'agent ont été mises à jour.');
+                });
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditClientDialog(Client client) {
+    final _telephoneController = TextEditingController(text: client.telephone);
+    final _emailController = TextEditingController(text: client.email);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Modifier les informations du client'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                TextField(
+                  controller: _telephoneController,
+                  decoration: InputDecoration(hintText: "Téléphone"),
+                ),
+                TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(hintText: "Email"),
+                ),
+                TextButton(
+                  child: Text('Changer rôle'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _showRoleDialogClient(client);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Enregistrer'),
+              onPressed: () {
+                setState(() {
+                  client.telephone = _telephoneController.text;
+                  client.email = _emailController.text;
+                  _updateClient(client);
+                  Navigator.of(context).pop();
+                  _showValidationDialog('Les informations du client ont été mises à jour.');
+                });
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRoleDialogPersonnel(Personnel personnel) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Changer rôle de l\'agent'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                title: Text('Superviseur', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  personnel.estSuperviseur = true;
+                  _updatePersonnel(personnel).then((_) {
+                    Navigator.of(context).pop();
+                    _showValidationDialog('Le rôle de l\'agent a été mis à jour.');
+                  });
+                },
+              ),
+              ListTile(
+                title: Text('Agent'),
+                onTap: () {
+                  personnel.estSuperviseur = false;
+                  _updatePersonnel(personnel).then((_) {
+                    Navigator.of(context).pop();
+                    _showValidationDialog('Le rôle de l\'agent a été mis à jour.');
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRoleDialogClient(Client client) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Changer rôle du client'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                title: Text('Contrôleur'),
+                onTap: () {
+                  client.estControleur = true;
+                  _updateClient(client).then((_) {
+                    Navigator.of(context).pop();
+                    _showValidationDialog('Le rôle du client a été mis à jour.');
+                  });
+                },
+              ),
+              ListTile(
+                title: Text('Client'),
+                onTap: () {
+                  client.estControleur = false;
+                  _updateClient(client).then((_) {
+                    Navigator.of(context).pop();
+                    _showValidationDialog('Le rôle du client a été mis à jour.');
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showValidationDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Validation'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _filterPersonnelAndClients(searchController.text);
+              },
+            ),
+          ],
         );
       },
     );
@@ -545,11 +685,21 @@ class _PersonnelPageState extends State<PersonnelPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Personnel de l\'entreprise'),
+        title: Text('Personnel et Clients de l\'entreprise'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _showAddPersonnelDialog,
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: TextButton.icon(
+              onPressed: _showAddPersonnelDialog,
+              icon: Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'Créer un compte',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+              ),
+            ),
           ),
         ],
       ),
@@ -561,95 +711,334 @@ class _PersonnelPageState extends State<PersonnelPage> {
               controller: searchController,
               decoration: InputDecoration(
                 labelText: 'Chercher',
-                suffixIcon: Icon(Icons.search),
+                hintText: 'Chercher par nom ou prénom',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              onChanged: (value) {
-                _filterPersonnel(value);
-              },
+              onChanged: _filterPersonnelAndClients,
             ),
           ),
           Expanded(
-            child: StreamBuilder<List<Residence>>(
-              stream: _residencesStream(),
-              builder: (context, snapshotResidences) {
-                if (!snapshotResidences.hasData) return CircularProgressIndicator();
-
-                return StreamBuilder<List<Personnel>>(
-                  stream: _personnelStream(),
-                  builder: (context, snapshotPersonnel) {
-                    if (!snapshotPersonnel.hasData) return CircularProgressIndicator();
-
-                    Set<String> allAssignedPersonnelIds = snapshotResidences.data!
-                        .expand((residence) => residence.personnelIds)
-                        .toSet();
-
-                    List<Personnel> unassignedPersonnel = snapshotPersonnel.data!
-                        .where((personnel) => !allAssignedPersonnelIds.contains(personnel.id) &&
-                        (personnel.nom.toLowerCase().contains(searchController.text.toLowerCase()) ||
-                            personnel.prenom.toLowerCase().contains(searchController.text.toLowerCase())))
-                        .toList();
-
-                    return ListView(
-                      children: [
-                        if (unassignedPersonnel.isNotEmpty)
-                          ListTile(
-                            title: Text('Personnel Non Affecté'),
-                            subtitle: ListView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              itemCount: unassignedPersonnel.length,
-                              itemBuilder: (context, index) {
-                                Personnel personnel = unassignedPersonnel[index];
-                                return ListTile(
-                                  title: Text(personnel.nom + " " + personnel.prenom),
-                                  subtitle: Text(personnel.telephone),
-                                  onTap: () => _showPersonnelOptionsDialog(personnel),
-                                );
-                              },
-                            ),
-                          ),
-                        ...snapshotResidences.data!.map((residence) {
-                          List<Personnel> personnelDeCetteResidence = snapshotPersonnel.data!
-                              .where((personnel) => residence.personnelIds.contains(personnel.id) &&
-                              (personnel.nom.toLowerCase().contains(searchController.text.toLowerCase()) ||
-                                  personnel.prenom.toLowerCase().contains(searchController.text.toLowerCase())))
-                              .toList();
-
-                          return ExpansionTile(
-                            title: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(residence.nom),
-                                SizedBox(width: 8), // Espace entre le nom et l'icône
-                                Icon(Icons.person), // Icône représentant le personnel
-                                SizedBox(width: 4), // Espace entre l'icône et le nombre
-                                Text('(${personnelDeCetteResidence.length})'), // Nombre de personnes
-                              ],
-                            ),
-                            children: personnelDeCetteResidence.map((personnel) {
-                              bool isClient = personnel.typeCompte == 'client';
-                              return ListTile(
-                                title: Text(
-                                  personnel.nom + " " + personnel.prenom,
-                                  style: isClient
-                                      ? TextStyle(color: Colors.blue[900], fontWeight: FontWeight.bold)
-                                      : null,
-                                ),
-                                subtitle: Text(personnel.telephone),
-                                onTap: () => _showPersonnelOptionsDialog(personnel),
-                              );
-                            }).toList(),
-                          );
-                        }).toList(),
-                      ],
-                    );
-                  },
-                );
-              },
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: Column(
+                children: [
+                  _buildTable(
+                    title: 'Personnel non affecté',
+                    rows: _buildUnassignedPersonnelRows(),
+                    showHeader: true,
+                  ),
+                  _buildTable(
+                    title: 'Clients non affectés',
+                    rows: _buildUnassignedClientRows(),
+                    showHeader: true,
+                  ),
+                  ..._buildResidenceTables(),
+                ],
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  List<DataRow> _buildUnassignedPersonnelRows() {
+    List<DataRow> rows = [];
+
+    var unassignedPersonnel = filteredPersonnelList.where((p) => p.residencesAffectees.isEmpty).toList();
+    for (var item in unassignedPersonnel) {
+      rows.add(DataRow(cells: [
+        DataCell(Text(item.nom)),
+        DataCell(Text(item.prenom)),
+        DataCell(Text(item.telephone)),
+        DataCell(Text(item.email)),
+        DataCell(Text(
+          item.estSuperviseur ? 'Superviseur' : 'Agent',
+          style: TextStyle(color: item.estSuperviseur ? Colors.red : Colors.black),
+        )),
+        DataCell(TextButton(
+          child: Text('Affecter Résidence'),
+          onPressed: () async {
+            String? selectedResidence = await _showResidenceDialog(context);
+            if (selectedResidence != null) {
+              _movePersonnel(item, selectedResidence);
+            }
+          },
+        )),
+        DataCell(Row(
+          children: [
+            TextButton(
+              child: Text('Modifier'),
+              onPressed: () {
+                _showEditPersonnelDialog(item);
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.black),
+              onPressed: () {
+                _confirmDeleteFromResidence(context, item, '');
+              },
+            ),
+          ],
+        )),
+      ]));
+    }
+
+    return rows;
+  }
+
+  List<DataRow> _buildUnassignedClientRows() {
+    List<DataRow> rows = [];
+
+    var unassignedClients = filteredClientList.where((c) => c.residencesAffectees.isEmpty).toList();
+    for (var item in unassignedClients) {
+      rows.add(DataRow(cells: [
+        DataCell(Text(item.nom)),
+        DataCell(Text(item.prenom)),
+        DataCell(Text(item.telephone)),
+        DataCell(Text(item.email)),
+        DataCell(Text(
+          item.estControleur ? 'Contrôleur' : 'Client',
+          style: TextStyle(color: item.estControleur ? Colors.red : Colors.black),
+        )),
+        DataCell(TextButton(
+          child: Text('Affecter Résidence'),
+          onPressed: () async {
+            String? selectedResidence = await _showResidenceDialog(context);
+            if (selectedResidence != null) {
+              _moveClient(item, selectedResidence);
+            }
+          },
+        )),
+        DataCell(Row(
+          children: [
+            TextButton(
+              child: Text('Modifier'),
+              onPressed: () {
+                _showEditClientDialog(item);
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.black),
+              onPressed: () {
+                _confirmDeleteFromResidence(context, item, '');
+              },
+            ),
+          ],
+        )),
+      ]));
+    }
+
+    return rows;
+  }
+
+  List<Widget> _buildResidenceTables() {
+    List<Widget> residenceTables = [];
+
+    for (var residence in residences) {
+      var clientsInResidence = filteredClientList.where((c) => c.residencesAffectees.contains(residence.id)).toList();
+      var personnelInResidence = filteredPersonnelList.where((p) => p.residencesAffectees.contains(residence.id)).toList();
+
+      if (clientsInResidence.isNotEmpty || personnelInResidence.isNotEmpty) {
+        residenceTables.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, left: 8.0, right: 8.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                color: Colors.white,
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    residence.nom,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        residenceTables.add(
+          _buildTable(
+            title: '',
+            rows: _buildResidenceRows(residence),
+            showHeader: true,
+          ),
+        );
+      }
+    }
+
+    return residenceTables;
+  }
+
+  List<DataRow> _buildResidenceRows(Residence residence) {
+    List<DataRow> rows = [];
+
+    var clientsInResidence = filteredClientList.where((c) => c.residencesAffectees.contains(residence.id)).toList();
+    clientsInResidence.sort((a, b) => a.nom.compareTo(b.nom)); // Sort clients by name
+    for (var item in clientsInResidence) {
+      rows.add(DataRow(
+        color: MaterialStateColor.resolveWith((states) => Colors.lightBlue.shade100),
+        cells: [
+          DataCell(Text(item.nom)),
+          DataCell(Text(item.prenom)),
+          DataCell(Text(item.telephone)),
+          DataCell(Text(item.email)),
+          DataCell(Text(
+            item.estControleur ? 'Contrôleur' : 'Client',
+            style: TextStyle(color: item.estControleur ? Colors.red : Colors.black),
+          )),
+          DataCell(TextButton(
+            child: Text('Affecter Résidence'),
+            onPressed: () async {
+              String? selectedResidence = await _showResidenceDialog(context);
+              if (selectedResidence != null) {
+                _moveClient(item, selectedResidence);
+              }
+            },
+          )),
+          DataCell(Row(
+            children: [
+              TextButton(
+                child: Text('Modifier'),
+                onPressed: () {
+                  _showEditClientDialog(item);
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.black),
+                onPressed: () {
+                  _confirmDeleteFromResidence(context, item, residence.id);
+                },
+              ),
+            ],
+          )),
+        ],
+      ));
+    }
+
+    var personnelInResidence = filteredPersonnelList.where((p) => p.residencesAffectees.contains(residence.id)).toList();
+    personnelInResidence.sort((a, b) => a.nom.compareTo(b.nom)); // Sort personnel by name
+    for (var item in personnelInResidence) {
+      rows.add(DataRow(cells: [
+        DataCell(Text(item.nom)),
+        DataCell(Text(item.prenom)),
+        DataCell(Text(item.telephone)),
+        DataCell(Text(item.email)),
+        DataCell(Text(
+          item.estSuperviseur ? 'Superviseur' : 'Agent',
+          style: TextStyle(color: item.estSuperviseur ? Colors.red : Colors.black),
+        )),
+        DataCell(TextButton(
+          child: Text('Affecter Résidence'),
+          onPressed: () async {
+            String? selectedResidence = await _showResidenceDialog(context);
+            if (selectedResidence != null) {
+              _movePersonnel(item, selectedResidence);
+            }
+          },
+        )),
+        DataCell(Row(
+          children: [
+            TextButton(
+              child: Text('Modifier'),
+              onPressed: () {
+                _showEditPersonnelDialog(item);
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.black),
+              onPressed: () {
+                _confirmDeleteFromResidence(context, item, residence.id);
+              },
+            ),
+          ],
+        )),
+      ]));
+    }
+
+    return rows;
+  }
+
+  Widget _buildTable({required String title, required List<DataRow> rows, required bool showHeader}) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title.isNotEmpty)
+            Text(
+              title,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey.shade300),
+              columns: [
+                DataColumn(label: Text('Nom')),
+                DataColumn(label: Text('Prénom')),
+                DataColumn(label: Text('Téléphone')),
+                DataColumn(label: Text('Email')),
+                DataColumn(label: Text('Rôle')),
+                DataColumn(label: Text('Résidence')),
+                DataColumn(label: Text('Action')),
+              ],
+              rows: rows,
+              dividerThickness: 2,
+              border: TableBorder(
+                top: BorderSide(color: Colors.black),
+                bottom: BorderSide(color: Colors.black),
+                left: BorderSide(color: Colors.black),
+                right: BorderSide(color: Colors.black),
+                horizontalInside: BorderSide(color: Colors.black),
+                verticalInside: BorderSide(color: Colors.black),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _showResidenceDialog(BuildContext context) async {
+    String? selectedResidenceId;
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Sélectionnez une résidence'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('Aucune résidence'),
+                onTap: () {
+                  selectedResidenceId = '';
+                  Navigator.of(context).pop(selectedResidenceId);
+                },
+              ),
+              ...residences.map((residence) {
+                return ListTile(
+                  title: Text(residence.nom),
+                  onTap: () {
+                    selectedResidenceId = residence.id;
+                    Navigator.of(context).pop(selectedResidenceId);
+                  },
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
     );
   }
 }

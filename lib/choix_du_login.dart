@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smartboard/client/client_login_page.dart';
 
 import 'administrateur_gestion.dart';
 import 'agent_login.dart';
@@ -9,11 +10,18 @@ class ChoiceLoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Choix du Login'),
+        title: Text(
+          'Choix du Login',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
-        leading: Image.asset('assets/images/icon.png'), // Ajout du logo ici
+        elevation: 2,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset('assets/images/icon.png'),
+        ),
       ),
       body: Stack(
         children: [
@@ -21,22 +29,43 @@ class ChoiceLoginPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                LoginButton(title: 'Entreprise', onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => EntrepriseLoginPage()));
-                }),
+                LoginCard(
+                  title: 'Entreprise',
+                  icon: Icons.business,
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => EntrepriseLoginPage()));
+                  },
+                ),
                 SizedBox(height: 20),
-                LoginButton(title: 'Agent', onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => AgentLoginPage()));
-                }),
+                LoginCard(
+                  title: 'Client/Reception',
+                  icon: Icons.people,
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => ClientLoginPage()));
+                  },
+                ),
+                SizedBox(height: 20),
+                LoginCard(
+                  title: 'Agent',
+                  icon: Icons.person,
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AgentLoginPage()));
+                  },
+                ),
               ],
             ),
           ),
           Positioned(
             top: 20,
             right: 20,
-            child: LoginButton(title: 'Administrateur', onTap: () {
-              _showAdminLoginDialog(context);
-            }),
+            child: LoginCard(
+              title: 'Administrateur',
+              icon: Icons.admin_panel_settings,
+              onTap: () {
+                _showAdminLoginDialog(context);
+              },
+              isAdmin: true, // Indicate that this is the admin button
+            ),
           ),
         ],
       ),
@@ -64,11 +93,11 @@ class ChoiceLoginPage extends StatelessWidget {
                 Navigator.of(context).pop();
               },
             ),
-            TextButton(
+            ElevatedButton(
               child: Text('Valider'),
               onPressed: () {
                 if (_passwordController.text == '2233') {
-                  Navigator.of(context). pop(); // Ferme le dialogue
+                  Navigator.of(context).pop();
                   Navigator.push(context, MaterialPageRoute(builder: (context) => AdministrateurGestion()));
                 } else {
                   Navigator.of(context).pop();
@@ -103,21 +132,44 @@ class ChoiceLoginPage extends StatelessWidget {
   }
 }
 
-class LoginButton extends StatelessWidget {
+class LoginCard extends StatelessWidget {
   final String title;
+  final IconData icon;
   final VoidCallback onTap;
+  final bool isAdmin;
 
-  const LoginButton({Key? key, required this.title, required this.onTap}) : super(key: key);
+  const LoginCard({Key? key, required this.title, required this.icon, required this.onTap, this.isAdmin = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.white, backgroundColor: Colors.black,
-        minimumSize: Size(200, 50),
+    return Card(
+      elevation: 6.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
       ),
-      onPressed: onTap,
-      child: Text(title),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Container(
+          width: isAdmin ? 150 : 250, // Make the admin button smaller
+          height: isAdmin ? 50 : 100, // Make the admin button smaller
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            color: Colors.transparent, // Make the button transparent
+            border: Border.all(color: Colors.black87), // Add a border to the button
+          ),
+          child: Center(
+            child: ListTile(
+              leading: Icon(icon, size: isAdmin ? 30 : 40, color: Colors.black87),
+              title: Text(
+                title,
+                style: TextStyle(fontSize: isAdmin ? 14 : 20, color: Colors.black87, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

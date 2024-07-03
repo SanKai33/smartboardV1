@@ -8,6 +8,7 @@ class Appartement {
   int nombreLitsSimples;
   int nombreLitsDoubles;
   int nombreSallesDeBains;
+  int ordre; // Ajout du champ ordre
 
   Appartement({
     required this.id,
@@ -19,6 +20,7 @@ class Appartement {
     required this.nombreLitsSimples,
     required this.nombreLitsDoubles,
     required this.nombreSallesDeBains,
+    required this.ordre, // Ajout du champ ordre
   });
 
   factory Appartement.fromMap(Map<String, dynamic> map, String id) {
@@ -32,6 +34,7 @@ class Appartement {
       nombreLitsSimples: map['nombreLitsSimples'] ?? 0,
       nombreLitsDoubles: map['nombreLitsDoubles'] ?? 0,
       nombreSallesDeBains: map['nombreSallesDeBains'] ?? 0,
+      ordre: map['ordre'] ?? 0, // Initialisation du champ ordre
     );
   }
 
@@ -46,6 +49,7 @@ class Appartement {
       'nombreLitsSimples': nombreLitsSimples,
       'nombreLitsDoubles': nombreLitsDoubles,
       'nombreSallesDeBains': nombreSallesDeBains,
+      'ordre': ordre, // Ajout du champ ordre
     };
   }
 }

@@ -8,7 +8,7 @@ import 'models/personnel.dart';
 class MessageriePage extends StatefulWidget {
   final String currentEntrepriseId;
 
-  MessageriePage({required this.currentEntrepriseId});
+  MessageriePage({required this.currentEntrepriseId, required String currentClientId});
 
   @override
   _MessageriePageState createState() => _MessageriePageState();

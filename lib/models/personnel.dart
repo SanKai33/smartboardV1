@@ -9,9 +9,9 @@ class Personnel {
   String telephone;
   String typeCompte;
   bool estSuperviseur;
-  bool estControleur; // Nouvel attribut ajouté
-  String? residenceAffectee;
+  List<String> residencesAffectees; // Liste des résidences affectées
   String entrepriseId;
+  String statutPresence; // Nouveau champ
 
   Personnel({
     required this.id,
@@ -22,9 +22,9 @@ class Personnel {
     required this.telephone,
     required this.typeCompte,
     required this.estSuperviseur,
-    required this.estControleur, // Ajouté comme paramètre requis
-    this.residenceAffectee,
+    required this.residencesAffectees,
     required this.entrepriseId,
+    this.statutPresence = 'non présent', // Par défaut à "non présent"
   });
 
   factory Personnel.fromFirestore(DocumentSnapshot doc) {
@@ -39,9 +39,9 @@ class Personnel {
       telephone: data['telephone'] ?? '',
       typeCompte: data['typeCompte'] ?? '',
       estSuperviseur: data['estSuperviseur'] ?? false,
-      estControleur: data['estControleur'] ?? false, // Récupération de la propriété depuis Firestore
-      residenceAffectee: data['residenceAffectee'],
+      residencesAffectees: List<String>.from(data['residencesAffectees'] ?? []), // Liste des résidences affectées
       entrepriseId: data['entrepriseId'] ?? '',
+      statutPresence: data['statutPresence'] ?? 'non présent',
     );
   }
 
@@ -54,9 +54,9 @@ class Personnel {
       'telephone': telephone,
       'typeCompte': typeCompte,
       'estSuperviseur': estSuperviseur,
-      'estControleur': estControleur, // Ajout à la méthode toMap
-      'residenceAffectee': residenceAffectee,
+      'residencesAffectees': residencesAffectees, // Liste des résidences affectées
       'entrepriseId': entrepriseId,
+      'statutPresence': statutPresence,
     };
   }
 
@@ -68,9 +68,9 @@ class Personnel {
     String? telephone,
     String? typeCompte,
     bool? estSuperviseur,
-    bool? estControleur, // Nouvel attribut pour la méthode copyWith
-    String? residenceAffectee,
+    List<String>? residencesAffectees,
     String? entrepriseId,
+    String? statutPresence,
   }) {
     return Personnel(
       id: this.id,
@@ -81,10 +81,9 @@ class Personnel {
       telephone: telephone ?? this.telephone,
       typeCompte: typeCompte ?? this.typeCompte,
       estSuperviseur: estSuperviseur ?? this.estSuperviseur,
-      estControleur: estControleur ?? this.estControleur, // Initialisation de estControleur
-      residenceAffectee: residenceAffectee ?? this.residenceAffectee,
+      residencesAffectees: residencesAffectees ?? this.residencesAffectees,
       entrepriseId: entrepriseId ?? this.entrepriseId,
+      statutPresence: statutPresence ?? this.statutPresence,
     );
   }
 }
-

@@ -6,14 +6,14 @@ class Equipe {
   Equipe({
     required this.nom,
     required this.appartementIds,
-    required this.personnelIds, required List<dynamic> appartements,
+    required this.personnelIds,
   });
 
   factory Equipe.fromMap(Map<String, dynamic> map) {
     return Equipe(
       nom: map['nom'] ?? '',
       appartementIds: map['appartementIds'] != null ? List<String>.from(map['appartementIds']) : [],
-      personnelIds: map['personnelIds'] != null ? List<String>.from(map['personnelIds']) : [], appartements: [],
+      personnelIds: map['personnelIds'] != null ? List<String>.from(map['personnelIds']) : [],
     );
   }
 

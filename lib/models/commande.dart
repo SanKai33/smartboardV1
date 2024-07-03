@@ -13,7 +13,7 @@ class Commande {
   Map<String, DetailsAppartement> detailsAppartements;
   List<Equipe> equipes;
   Map<String, String> validation;
-  List<String> personnelIds; // Ajouté pour stocker les identifiants du personnel
+  List<String> personnelIds;
 
   Commande({
     required this.id,
@@ -25,7 +25,7 @@ class Commande {
     required this.detailsAppartements,
     required this.equipes,
     required this.validation,
-    required this.personnelIds, required Map ordreAppartements, // Initialisation de la liste du personnel
+    required this.personnelIds, required Map ordreAppartements,
   });
 
   factory Commande.fromMap(Map<String, dynamic> map, String documentId) {
@@ -39,7 +39,7 @@ class Commande {
       detailsAppartements: (map['detailsAppartements'] as Map<String, dynamic>?)?.map((key, value) => MapEntry(key, DetailsAppartement.fromMap(value))) ?? {},
       equipes: (map['equipes'] as List<dynamic>? ?? []).map((e) => Equipe.fromMap(e as Map<String, dynamic>)).toList(),
       validation: Map<String, String>.from(map['validation'] ?? {}),
-      personnelIds: List<String>.from(map['personnelIds'] ?? []), ordreAppartements: {}, // Récupération des identifiants du personnel
+      personnelIds: List<String>.from(map['personnelIds'] ?? []), ordreAppartements: {},
     );
   }
 
@@ -53,7 +53,7 @@ class Commande {
       'detailsAppartements': detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
       'equipes': equipes.map((x) => x.toMap()).toList(),
       'validation': validation,
-      'personnelIds': personnelIds, // Ajout des identifiants du personnel
+      'personnelIds': personnelIds,
     };
   }
 }

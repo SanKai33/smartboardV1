@@ -4,45 +4,43 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Message {
   String id;
+  String commandeId;
   String senderId;
   String senderName;
-  String receiverId;
-  String receiverName;
   String text;
-  Timestamp timestamp;
+  String imageUrl;
+  DateTime timestamp;
 
   Message({
     required this.id,
+    required this.commandeId,
     required this.senderId,
     required this.senderName,
-    required this.receiverId,
-    required this.receiverName,
     required this.text,
+    required this.imageUrl,
     required this.timestamp,
   });
 
-  factory Message.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
+  factory Message.fromMap(Map<String, dynamic> map, String documentId) {
     return Message(
-      id: doc.id,
-      senderId: data['senderId'] ?? '',
-      senderName: data['senderName'] ?? '',
-      receiverId: data['receiverId'] ?? '',
-      receiverName: data['receiverName'] ?? '',
-      text: data['text'] ?? '',
-      timestamp: data['timestamp'] ?? Timestamp.now(),
+      id: documentId,
+      commandeId: map['commandeId'] ?? '',
+      senderId: map['senderId'] ?? '',
+      senderName: map['senderName'] ?? '',
+      text: map['text'] ?? '',
+      imageUrl: map['imageUrl'] ?? '',
+      timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'commandeId': commandeId,
       'senderId': senderId,
       'senderName': senderName,
-      'receiverId': receiverId,
-      'receiverName': receiverName,
       'text': text,
-      'timestamp': timestamp,
+      'imageUrl': imageUrl,
+      'timestamp': Timestamp.fromDate(timestamp),
     };
   }
 }

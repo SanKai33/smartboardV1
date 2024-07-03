@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/parametrer_page.dart';
+import 'package:smartboard/parametrer_page_web.dart';
+import 'models/appartement.dart';
 import 'models/residence.dart';
 
 class ResidencesPage extends StatelessWidget {
@@ -8,12 +11,95 @@ class ResidencesPage extends StatelessWidget {
 
   ResidencesPage({required this.entrepriseId});
 
-  Future<int> _getNombreAppartements(String residenceId) async {
+  Future<List<Appartement>> _getAppartements(String residenceId) async {
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('appartements')
         .where('residenceId', isEqualTo: residenceId)
         .get();
-    return snapshot.docs.length;
+    return snapshot.docs.map((doc) => Appartement.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
+  }
+
+  void _showAddResidenceDialog(BuildContext context) {
+    final TextEditingController _nomController = TextEditingController();
+    final TextEditingController _nombreAppartementsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Ajouter une résidence'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              TextField(
+                controller: _nomController,
+                decoration: InputDecoration(labelText: 'Nom de la résidence'),
+              ),
+              TextField(
+                controller: _nombreAppartementsController,
+                decoration: InputDecoration(labelText: 'Nombre d\'appartements'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Ajouter'),
+              onPressed: () {
+                // Ajouter la résidence dans Firebase
+                final String nom = _nomController.text;
+                final int nombreAppartements = int.tryParse(_nombreAppartementsController.text) ?? 0;
+
+                if (nom.isNotEmpty) {
+                  final residenceId = FirebaseFirestore.instance.collection('residences').doc().id;
+
+                  FirebaseFirestore.instance.collection('residences').doc(residenceId).set({
+                    'nom': nom,
+                    'adresse': '', // Placeholder pour l'adresse, peut être modifié plus tard
+                    'entrepriseId': entrepriseId,
+                  }).then((_) {
+                    // Ajouter les appartements à Firebase
+                    for (int i = 0; i < nombreAppartements; i++) {
+                      final appartementId = FirebaseFirestore.instance.collection('appartements').doc().id;
+                      FirebaseFirestore.instance.collection('appartements').doc(appartementId).set({
+                        'numero': '',
+                        'batiment': '',
+                        'typologie': '',
+                        'nombrePersonnes': 0,
+                        'residenceId': residenceId,
+                        'nombreLitsSimples': 0,
+                        'nombreLitsDoubles': 0,
+                        'nombreSallesDeBains': 0,
+                      });
+                    }
+
+                    // Naviguer vers la page de paramétrage après l'ajout
+                    Navigator.of(context).pop();
+                    if (kIsWeb) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ParametrerPageWeb(entrepriseId: entrepriseId, residence: Residence(id: residenceId, nom: nom, adresse: '', imageUrl: '', entrepriseId: ''))),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ParametrerPage(entrepriseId: entrepriseId, residence: Residence(id: residenceId, nom: nom, adresse: '', imageUrl: '', entrepriseId: ''))),
+                      );
+                    }
+                  });
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -42,54 +128,109 @@ class ResidencesPage extends StatelessWidget {
             return Center(child: Text('Aucune résidence trouvée'));
           }
 
-          return GridView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 16.0), // Ajout de padding horizontal
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,  // 3 colonnes
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.0,  // Chaque élément est un carré
-            ),
+          return ListView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               DocumentSnapshot document = snapshot.data!.docs[index];
               Residence residence = Residence.fromFirestore(document);
-              return FutureBuilder<int>(
-                future: _getNombreAppartements(residence.id),
+              return FutureBuilder<List<Appartement>>(
+                future: _getAppartements(residence.id),
                 builder: (context, appartementsSnapshot) {
+                  if (appartementsSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (appartementsSnapshot.hasError) {
+                    return Center(child: Text('Erreur lors du chargement des appartements'));
+                  }
+
+                  List<Appartement>? appartements = appartementsSnapshot.data;
+
                   return Card(
+                    margin: EdgeInsets.symmetric(vertical: 8.0),
                     child: ListTile(
+                      contentPadding: EdgeInsets.all(16.0),
                       leading: CircleAvatar(
                         backgroundImage: residence.imageUrl.isNotEmpty
-                            ? NetworkImage(residence.imageUrl as String) // Cast en String explicitement
+                            ? NetworkImage(residence.imageUrl as String)
                             : AssetImage('assets/images/placeholder.png') as ImageProvider,
-                        radius: 25,
+                        radius: 30,
                       ),
                       title: Text(
                         residence.nom,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      subtitle: Text(residence.adresse),
-                      trailing: appartementsSnapshot.hasData
-                          ? Row(
-                        mainAxisSize: MainAxisSize.min,
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.apartment),
-                          SizedBox(width: 8),
                           Text(
-                            '${appartementsSnapshot.data}',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            residence.adresse,
+                            style: TextStyle(fontSize: 14),
                           ),
+                          if (appartements != null && appartements.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.person, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '${appartements.map((a) => a.nombrePersonnes).reduce((a, b) => a + b)}',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.king_bed, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '${appartements.map((a) => a.nombreLitsDoubles).reduce((a, b) => a + b)}',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bed, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '${appartements.map((a) => a.nombreLitsSimples).reduce((a, b) => a + b)}',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bathtub, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '${appartements.map((a) => a.nombreSallesDeBains).reduce((a, b) => a + b)}',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
-                      )
-                          : SizedBox(),
+                      ),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ParametrerPage(entrepriseId: entrepriseId, residence: residence),
-                          ),
-                        );
+                        if (kIsWeb) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => ParametrerPageWeb(entrepriseId: entrepriseId, residence: residence)),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => ParametrerPage(entrepriseId: entrepriseId, residence: residence)),
+                          );
+                        }
                       },
                     ),
                   );
@@ -99,14 +240,12 @@ class ResidencesPage extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ParametrerPage(entrepriseId: entrepriseId)),
-          );
+          _showAddResidenceDialog(context);
         },
-        child: Icon(Icons.add),
+        label: Text('Nouvelle Résidence'),
+        icon: Icon(Icons.add),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),

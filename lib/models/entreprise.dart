@@ -3,12 +3,14 @@ class Entreprise {
   String nom; // Le nom de l'entreprise
   String? email; // L'email associé au compte de l'entreprise (peut être null pour l'authentification par téléphone)
   String? telephone; // Numéro de téléphone associé au compte (facultatif)
+  String? imageUrl; // URL de l'image de profil (facultatif)
 
   Entreprise({
     required this.id,
     required this.nom,
     this.email, // Rendu optionnel
     this.telephone, // Nouveau champ optionnel
+    this.imageUrl, // Nouveau champ optionnel
   });
 
   // Méthode pour convertir une instance d'Entreprise en Map, pour l'enregistrement dans Firestore
@@ -17,6 +19,7 @@ class Entreprise {
       'nom': nom,
       'email': email, // Peut être null
       'telephone': telephone, // Nouveau champ
+      'imageUrl': imageUrl, // Nouveau champ
     };
   }
 
@@ -27,6 +30,7 @@ class Entreprise {
       nom: map['nom'] ?? '',
       email: map['email'], // Peut être null
       telephone: map['telephone'], // Nouveau champ
+      imageUrl: map['imageUrl'], // Nouveau champ
     );
   }
 }

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class NotificationsPage extends StatelessWidget {
   final String entrepriseId;
 
-  NotificationsPage({required this.entrepriseId});
+  NotificationsPage({required this.entrepriseId, required String clientId, });
 
   @override
   Widget build(BuildContext context) {

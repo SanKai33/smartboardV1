@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
+import 'package:percent_indicator/circular_percent_indicator.dart';
+import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'Visualisation.dart';
 import 'affectation_personnel.dart';
+import 'messagerie_de_group.dart';
 import 'models/appartement.dart';
 import 'models/commande.dart';
 import 'models/detailAppartement.dart';
@@ -13,10 +15,8 @@ import 'models/equipes.dart';
 import 'models/personnel.dart';
 import 'models/residence.dart';
 
-
-
 class ValidationMenagePage extends StatefulWidget {
-  late final Commande commande;
+  final Commande commande;
 
   ValidationMenagePage({required this.commande});
 
@@ -26,49 +26,47 @@ class ValidationMenagePage extends StatefulWidget {
 
 class _ValidationMenagePageState extends State<ValidationMenagePage> {
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Residence? residence; // Variable pour stocker l'objet Residence
+  Residence? residence;
   String _fcmToken = '';
   Timer? _timer;
-  Commande? _commande;
-
-
+  List<Personnel> _personnelAffecte = [];
 
   @override
   void initState() {
     super.initState();
-    _loadCommande();
-    _startAutoRefresh();
+    _fetchPersonnelAffecte();
   }
 
-  void _loadCommande() async {
-    if (!mounted) return; // Ajoutez cette ligne pour vérifier que le widget est monté
+  Future<void> _fetchPersonnelAffecte() async {
+    List<Personnel> personnelList = [];
+    try {
+      QuerySnapshot personnelSnapshot = await _firestore
+          .collection('personnel')
+          .where('residenceAffectee', isEqualTo: widget.commande.residenceId)
+          .get();
 
-    DocumentSnapshot snapshot = await _firestore.collection('commandes').doc(widget.commande.id).get();
-    setState(() {
-      _commande = Commande.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
+      for (var doc in personnelSnapshot.docs) {
+        personnelList.add(Personnel.fromFirestore(doc));
+      }
+    } catch (e) {
+      print("Erreur lors de la récupération du personnel: $e");
+    }
+
+    if (mounted) {
+      setState(() {
+        _personnelAffecte = personnelList;
+      });
+    }
+  }
+
+  void _updateCommande(Commande commande) async {
+    await _firestore.collection('commandes').doc(commande.id).update({
+      'detailsAppartements': commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
+      'equipes': commande.equipes.map((e) => e.toMap()).toList(),
     });
   }
 
-  void _startAutoRefresh() {
-    _timer = Timer.periodic(Duration(seconds: 10), (Timer t) => _loadCommande());
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _updateCommande() async {
-    await _firestore.collection('commandes').doc(widget.commande.id).update({
-      'detailsAppartements': widget.commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
-      'equipes': widget.commande.equipes.map((e) => e.toMap()).toList(),
-    });
-    _loadCommande();
-  }
-
-
-  void _afficherOptionsValidation(Appartement appartement) {
+  void _afficherOptionsValidation(Appartement appartement, Commande commande) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -79,17 +77,32 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             children: <Widget>[
               ListTile(
                 title: Text('Valider le ménage'),
-                onTap: () => _choisirOption(appartement, 'Ménage validé'),
+                onTap: () => _choisirOption(appartement, 'Ménage validé', commande),
               ),
               ListTile(
                 title: Text('Valider le contrôle'),
-                onTap: () => _choisirOption(appartement, 'Contrôle validé'),
+                onTap: () => _choisirOption(appartement, 'Contrôle validé', commande),
               ),
               ListTile(
                 title: Text('Retour sur le ménage'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _afficherOptionsRetourMenage(appartement);
+                  _afficherOptionsRetourMenage(appartement, commande);
+                },
+              ),
+              ListTile(
+                title: Text('Modifier'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VisualiserCommandePage(
+                        commandeId: commande.id,
+                        commande: commande,
+                      ),
+                    ),
+                  );
                 },
               ),
             ],
@@ -99,15 +112,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     );
   }
 
-  double _calculerAvancement() {
-    int totalAppartements = widget.commande.appartements.length;
-    int appartementsFait = widget.commande.detailsAppartements.values
-        .where((details) => details.menageEffectue)
-        .length;
-    return (appartementsFait / totalAppartements) * 100;
-  }
-
-  void _afficherOptionsRetourMenage(Appartement appartement) {
+  void _afficherOptionsRetourMenage(Appartement appartement, Commande commande) {
     final TextEditingController _noteController = TextEditingController();
     showDialog(
       context: context,
@@ -124,7 +129,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                 ...['Lit', 'Cuisine', 'Salle de bain', 'Poussière', 'Aspirateur']
                     .map((option) => ListTile(
                   title: Text(option),
-                  onTap: () => _choisirOption(appartement, 'Retour: $option'),
+                  onTap: () => _choisirOption(appartement, 'Retour: $option', commande),
                 ))
                     .toList(),
               ],
@@ -139,7 +144,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
               child: Text('Enregistrer Note'),
               onPressed: () {
                 if (_noteController.text.isNotEmpty) {
-                  _choisirOption(appartement, 'Retour: ${_noteController.text}');
+                  _choisirOption(appartement, 'Retour: ${_noteController.text}', commande);
                 }
                 Navigator.of(context).pop();
               },
@@ -150,36 +155,30 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     );
   }
 
-  void _choisirOption(Appartement appartement, String choix) {
-    Navigator.of(context).pop(); // Ferme la boîte de dialogue
+  void _choisirOption(Appartement appartement, String choix, Commande commande) {
+    Navigator.of(context).pop();
     setState(() {
-      DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
+      DetailsAppartement details = commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
 
-      // Si c'est un retour, mettre à jour la note et marquer le ménage comme non effectué
       if (choix.startsWith('Retour:')) {
         details.note = choix.replaceFirst('Retour: ', '');
         details.etatValidation = 'Retour: ' + details.note;
         details.menageEffectue = false;
       } else if (details.etatValidation != choix) {
-        // Si ménage/contrôle validé, mettre à jour l'état et marquer le ménage comme effectué si nécessaire
         details.etatValidation = choix;
         details.menageEffectue = choix == 'Ménage validé' || choix == 'Contrôle validé';
 
         if (choix == 'Ménage validé') {
-          // Appeler la méthode pour créer une notification
-          _creerNotification(
-              appartement,
-              'Le ménage de l\'appartement ${appartement.numero} a été validé à ${DateFormat('HH:mm').format(DateTime.now())}'
-          );
+          _creerNotification(appartement,
+              'Le ménage de l\'appartement ${appartement.numero} a été validé à ${DateFormat('HH:mm').format(DateTime.now())}');
         }
       } else {
-        // Si l'utilisateur clique à nouveau sur la même option, réinitialiser l'état
         details.etatValidation = '';
         details.menageEffectue = false;
       }
 
-      widget.commande.detailsAppartements[appartement.id] = details;
-      _updateCommande();
+      commande.detailsAppartements[appartement.id] = details;
+      _updateCommande(commande);
     });
   }
 
@@ -190,7 +189,6 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
       'timestamp': FieldValue.serverTimestamp(),
       'appartementId': appartement.id,
       'entrepriseId': widget.commande.entrepriseId,
-      // Ajouter d'autres détails si nécessaire
     });
   }
 
@@ -200,7 +198,6 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     } else {
       switch (details.etatValidation) {
         case 'Ménage validé':
-          return Colors.white;
         case 'Contrôle validé':
           return Colors.white;
         default:
@@ -209,14 +206,19 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     }
   }
 
-  void _ajouterEquipe() {
+  void _ajouterEquipe(Commande commande) {
     setState(() {
-      String newTeamName = 'Équipe ${widget.commande.equipes.length + 1}';
-      widget.commande.equipes.add(Equipe(nom: newTeamName, appartementIds: [], appartements: [], personnelIds: []));
+      String newTeamName = 'Équipe ${commande.equipes.length + 1}';
+      Equipe nouvelleEquipe = Equipe(nom: newTeamName, appartementIds: [], personnelIds: []);
+      commande.equipes.add(nouvelleEquipe);
+
+      _firestore.collection('commandes').doc(commande.id).update({
+        'equipes': commande.equipes.map((e) => e.toMap()).toList(),
+      });
     });
   }
 
-  void _showTeamOptions(Equipe equipe) {
+  void _showTeamOptions(Equipe equipe, Commande commande) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -226,19 +228,25 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               ListTile(
-                title: Text('Affecter des appartements'),
-                onTap: () => _showAssignAppartementsDialog(equipe),
+                title: Text('Ajouter appartement'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showAssignAppartementsDialog(equipe, commande);
+                },
               ),
               ListTile(
-                title: Text('Ajouter personnel'),
+                title: Text('Affecter personnel'),
                 onTap: () {
-                  Navigator.of(context).pop(); // Fermer la boîte de dialogue actuelle
-                  _showAddPersonnelDialog(equipe); // Afficher la nouvelle boîte de dialogue
+                  Navigator.of(context).pop();
+                  _showAddPersonnelDialog(equipe, commande);
                 },
               ),
               ListTile(
                 title: Text('Supprimer l\'équipe'),
-                onTap: () => _deleteEquipe(equipe),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _deleteEquipe(equipe, commande);
+                },
               ),
             ],
           ),
@@ -252,7 +260,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     try {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('personnel')
-          .where('entrepriseId', isEqualTo: widget.commande.entrepriseId) // Assurez-vous que cette condition est correcte
+          .where('entrepriseId', isEqualTo: widget.commande.entrepriseId)
           .get();
 
       for (var doc in querySnapshot.docs) {
@@ -264,8 +272,10 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     return personnelList;
   }
 
-  Future<void> _showAddPersonnelDialog(Equipe equipe) async {
+  Future<void> _showAddPersonnelDialog(Equipe equipe, Commande commande) async {
     List<Personnel> personnelList = await _fetchAvailablePersonnel();
+    List<Personnel> personnelAffecte = personnelList.where((p) => p.residencesAffectees == widget.commande.residenceId).toList();
+    List<Personnel> personnelGeneral = personnelList.where((p) => p.residencesAffectees != widget.commande.residenceId).toList();
 
     showDialog(
       context: context,
@@ -274,17 +284,68 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
           title: Text('Ajouter personnel à ${equipe.nom}'),
           content: SingleChildScrollView(
             child: ListBody(
-              children: personnelList.map((personnel) {
-                return ListTile(
-                  title: Text('${personnel.prenom} ${personnel.nom}'),
-                  onTap: () {
-                    // Logique pour ajouter le personnel à l'équipe
-                    equipe.appartementIds.add(personnel.id); // Ajouter l'ID de l'agent à l'équipe
-                    _updateCommande(); // Mettre à jour la commande
-                    Navigator.of(context).pop(); // Fermer la boîte de dialogue
-                  },
-                );
-              }).toList(),
+              children: [
+                ...personnelAffecte.map((personnel) {
+                  String? equipeNom = _getEquipeForPersonnel(personnel.id, commande);
+                  bool isAssignedToAnotherTeam = equipeNom != null && equipeNom != equipe.nom;
+
+                  return ListTile(
+                    title: Text('${personnel.prenom} ${personnel.nom}'),
+                    subtitle: isAssignedToAnotherTeam ? Text('Affecté à $equipeNom') : null,
+                    onTap: isAssignedToAnotherTeam
+                        ? null
+                        : () {
+                      setState(() {
+                        equipe.personnelIds.add(personnel.id);
+                        _updateCommande(commande);
+                      });
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Personnel ajouté avec succès.'),
+                        ),
+                      );
+                    },
+                    trailing: isAssignedToAnotherTeam
+                        ? null
+                        : IconButton(
+                      icon: Icon(Icons.remove_circle, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          equipe.personnelIds.remove(personnel.id);
+                          _updateCommande(commande);
+                        });
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Personnel désaffecté avec succès.'),
+                          ),
+                        );
+                      },
+                    ),
+                    enabled: !isAssignedToAnotherTeam,
+                  );
+                }).toList(),
+                Divider(),
+                Text('Personnes non affectées à la résidence'),
+                ...personnelGeneral.map((personnel) {
+                  return ListTile(
+                    title: Text('${personnel.prenom} ${personnel.nom}'),
+                    onTap: () {
+                      setState(() {
+                        equipe.personnelIds.add(personnel.id);
+                        _updateCommande(commande);
+                      });
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Personnel ajouté avec succès.'),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              ],
             ),
           ),
         );
@@ -292,10 +353,18 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     );
   }
 
-  void _showAssignAppartementsDialog(Equipe equipe) {
-    // Création d'une map pour suivre les appartements sélectionnés
+  String? _getEquipeForPersonnel(String personnelId, Commande commande) {
+    for (var equipe in commande.equipes) {
+      if (equipe.personnelIds.contains(personnelId)) {
+        return equipe.nom;
+      }
+    }
+    return null;
+  }
+
+  void _showAssignAppartementsDialog(Equipe equipe, Commande commande) {
     Map<String, bool> selectedAppartements = Map.fromIterable(
-      widget.commande.appartements,
+      commande.appartements,
       key: (item) => item.id,
       value: (item) => equipe.appartementIds.contains(item.id),
     );
@@ -306,22 +375,24 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              title: Text('Affecter des appartements à ${equipe.nom}'),
+              title: Text('Ajouter appartement à ${equipe.nom}'),
               content: SingleChildScrollView(
                 child: ListBody(
-                  children: widget.commande.appartements.map((appartement) {
-                    String equipeAffectation = _trouverEquipeAffectation(appartement.id);
+                  children: commande.appartements.map((appartement) {
+                    String equipeAffectation = _trouverEquipeAffectation(appartement.id, commande);
                     bool isAssignedToAnotherTeam = equipeAffectation.isNotEmpty && equipeAffectation != equipe.nom;
 
                     return CheckboxListTile(
-                      title: Text('Appartement ${appartement.numero}' + (isAssignedToAnotherTeam ? ' (Affecté à $equipeAffectation)' : '')),
+                      title: Text('Appartement ${appartement.numero} - Bâtiment ${appartement.batiment}' +
+                          (isAssignedToAnotherTeam ? ' (Affecté à $equipeAffectation)' : '')),
                       value: selectedAppartements[appartement.id],
-                      onChanged: isAssignedToAnotherTeam ? null : (bool? value) {
+                      onChanged: isAssignedToAnotherTeam
+                          ? null
+                          : (bool? value) {
                         setState(() {
                           selectedAppartements[appartement.id] = value!;
                           if (value) {
-                            // Supprimer l'appartement des autres équipes
-                            widget.commande.equipes.forEach((otherEquipe) {
+                            commande.equipes.forEach((otherEquipe) {
                               if (otherEquipe.nom != equipe.nom) {
                                 otherEquipe.appartementIds.remove(appartement.id);
                               }
@@ -341,8 +412,13 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                 TextButton(
                   child: Text('Enregistrer'),
                   onPressed: () {
-                    _applyAppartementSelection(selectedAppartements, equipe);
+                    _applyAppartementSelection(selectedAppartements, equipe, commande);
                     Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Appartements affectés avec succès.'),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -353,72 +429,97 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     );
   }
 
-  String _trouverEquipeAffectation(String appartementId) {
-    for (var equipe in widget.commande.equipes) {
+  String _trouverEquipeAffectation(String appartementId, Commande commande) {
+    for (var equipe in commande.equipes) {
       if (equipe.appartementIds.contains(appartementId)) {
         return equipe.nom;
       }
     }
     return '';
   }
-  void _applyAppartementSelection(Map<String, bool> selectedAppartements, Equipe equipe) {
+
+  void _applyAppartementSelection(Map<String, bool> selectedAppartements, Equipe equipe, Commande commande) {
     setState(() {
-      equipe.appartementIds = selectedAppartements.entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
-      _updateCommande();
+      equipe.appartementIds = selectedAppartements.entries.where((entry) => entry.value).map((entry) => entry.key).toList();
+      _updateCommande(commande);
     });
-
-    Navigator.pop(context); // Ajoutez cette ligne pour revenir à la page précédente
   }
 
-  void _deleteEquipe(Equipe equipe) {
+  void _deleteEquipe(Equipe equipe, Commande commande) {
     setState(() {
-      widget.commande.equipes.removeWhere((e) => e.nom == equipe.nom);
-      _updateCommande();
+      commande.equipes.removeWhere((e) => e.nom == equipe.nom);
+      _updateCommande(commande);
     });
-    Navigator.of(context).pop();
-  }
-  bool _peutFinaliserCommande() {
-    return widget.commande.detailsAppartements.values
-        .every((details) => details.etatValidation == 'Contrôle validé');
   }
 
-  double _calculerAvancementEquipe(Equipe equipe) {
+  bool _peutFinaliserCommande(Commande commande) {
+    return commande.detailsAppartements.values.every((details) => details.etatValidation == 'Contrôle validé');
+  }
+
+  double _calculerAvancementEquipe(Equipe equipe, Commande commande) {
     int totalAppartementsEquipe = equipe.appartementIds.length;
     if (totalAppartementsEquipe == 0) return 0.0;
 
-    int appartementsFait = equipe.appartementIds
-        .where((id) => widget.commande.detailsAppartements[id]?.menageEffectue ?? false)
-        .length;
+    int appartementsFait = equipe.appartementIds.where((id) => commande.detailsAppartements[id]?.menageEffectue ?? false).length;
 
     return (appartementsFait / totalAppartementsEquipe) * 100;
   }
 
+  double _calculerPourcentageLits(Equipe equipe, Commande commande) {
+    int totalLitsEquipe = 0;
+    int totalLitsCommande = 0;
 
-  String _trouverEquipePourAppartement(String appartementId) {
-    for (var equipe in widget.commande.equipes) {
+    for (var appartementId in equipe.appartementIds) {
+      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
+      totalLitsEquipe += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
+    }
+
+    for (var appartement in commande.appartements) {
+      totalLitsCommande += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
+    }
+
+    if (totalLitsCommande == 0) return 0.0;
+    return (totalLitsEquipe / totalLitsCommande) * 100;
+  }
+
+  double _calculerPourcentageSallesDeBain(Equipe equipe, Commande commande) {
+    int totalSallesDeBainEquipe = 0;
+    int totalSallesDeBainCommande = 0;
+
+    for (var appartementId in equipe.appartementIds) {
+      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
+      totalSallesDeBainEquipe += appartement.nombreSallesDeBains;
+    }
+
+    for (var appartement in commande.appartements) {
+      totalSallesDeBainCommande += appartement.nombreSallesDeBains;
+    }
+
+    if (totalSallesDeBainCommande == 0) return 0.0;
+    return (totalSallesDeBainEquipe / totalSallesDeBainCommande) * 100;
+  }
+
+  String _trouverEquipePourAppartement(String appartementId, Commande commande) {
+    for (var equipe in commande.equipes) {
       if (equipe.appartementIds.contains(appartementId)) {
-        return equipe.nom; // Retourne le nom de l'équipe
+        return equipe.nom;
       }
     }
-    return 'Non attribué'; // Si aucun appartement n'est trouvé
+    return 'Non attribué';
   }
 
   Color _getColorForValidationStatus(DetailsAppartement details) {
     if (details.etatValidation.startsWith('Retour:')) {
-      return Colors.red; // Point rouge pour le retour
+      return Colors.red;
     } else if (details.etatValidation == 'Ménage validé') {
-      return Colors.blue; // Point bleu pour le ménage validé
+      return Colors.blue;
     } else if (details.etatValidation == 'Contrôle validé') {
-      return Colors.green; // Point vert pour le contrôle validé
+      return Colors.green;
     }
-    return Colors.grey; // Couleur par défaut si non validé
+    return Colors.grey;
   }
 
-  // Fonction pour afficher les options de l'appartement
-  void _afficherOptionsAppartement(Appartement appartement) {
+  void _afficherOptionsAppartement(Appartement appartement, Commande commande) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -430,15 +531,23 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
               ListTile(
                 title: Text('Modifier'),
                 onTap: () {
-                  // Logique pour modifier l'appartement
                   Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VisualiserCommandePage(
+                        commandeId: commande.id,
+                        commande: commande,
+                      ),
+                    ),
+                  );
                 },
               ),
               ListTile(
                 title: Text('Supprimer'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _confirmerSuppressionAppartement(appartement);
+                  _confirmerSuppressionAppartement(appartement, commande);
                 },
               ),
             ],
@@ -448,8 +557,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     );
   }
 
-// Fonction pour confirmer la suppression d'un appartement
-  void _confirmerSuppressionAppartement(Appartement appartement) {
+  void _confirmerSuppressionAppartement(Appartement appartement, Commande commande) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -466,8 +574,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             TextButton(
               child: Text('Supprimer'),
               onPressed: () {
-                _supprimerAppartement(appartement);
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue de confirmation
+                _supprimerAppartement(appartement, commande);
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -476,33 +584,27 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     );
   }
 
-// Fonction pour supprimer un appartement
-  void _supprimerAppartement(Appartement appartement) {
-    // Suppression locale
+  void _supprimerAppartement(Appartement appartement, Commande commande) {
     setState(() {
-      widget.commande.appartements.removeWhere((a) => a.id == appartement.id);
-      widget.commande.detailsAppartements.remove(appartement.id);
-      // Mettre à jour les équipes si nécessaire
-      widget.commande.equipes.forEach((equipe) {
+      commande.appartements.removeWhere((a) => a.id == appartement.id);
+      commande.detailsAppartements.remove(appartement.id);
+      commande.equipes.forEach((equipe) {
         equipe.appartementIds.removeWhere((id) => id == appartement.id);
       });
     });
 
-    // Mise à jour de la commande dans Firestore
-    _mettreAJourCommandeDansFirestore();
+    _mettreAJourCommandeDansFirestore(commande);
   }
 
-  Future<void> _mettreAJourCommandeDansFirestore() async {
+  Future<void> _mettreAJourCommandeDansFirestore(Commande commande) async {
     try {
-      // Préparez les données à mettre à jour
       Map<String, dynamic> commandeMiseAJour = {
-        'appartements': widget.commande.appartements.map((x) => x.toMap()).toList(),
-        'detailsAppartements': widget.commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
-        // Autres mises à jour si nécessaire
+        'appartements': commande.appartements.map((x) => x.toMap()).toList(),
+        'detailsAppartements': commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
+        'equipes': commande.equipes.map((e) => e.toMap()).toList(),
       };
 
-      // Mise à jour du document de commande
-      await FirebaseFirestore.instance.collection('commandes').doc(widget.commande.id).update(commandeMiseAJour);
+      await FirebaseFirestore.instance.collection('commandes').doc(commande.id).update(commandeMiseAJour);
 
       print("Commande mise à jour dans Firestore");
     } catch (e) {
@@ -510,71 +612,58 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     }
   }
 
-
-
-
   Icon _getIconForValidationStatus(DetailsAppartement details) {
     if (details.etatValidation.startsWith('Retour:')) {
-      return Icon(Icons.refresh, color: Colors.red); // Icône pour indiquer un retour
+      return Icon(Icons.refresh, color: Colors.red);
     } else if (details.etatValidation == 'Ménage validé') {
-      return Icon(Icons.check_circle, color: Colors.blue); // Icône bleue pour le ménage validé
+      return Icon(Icons.check_circle, color: Colors.blue);
     } else if (details.etatValidation == 'Contrôle validé') {
-      return Icon(Icons.check_circle, color: Colors.green); // Icône verte pour le contrôle validé
+      return Icon(Icons.check_circle, color: Colors.green);
     }
-    return Icon(Icons.circle, color: Colors.grey); // Icône par défaut si non validé
+    return Icon(Icons.circle, color: Colors.grey);
   }
 
-  Widget _buildCustomProgressIndicator() {
-    double avancement = _calculerAvancement();
-    Color progressColor;
-
-    if (avancement < 33) {
-      progressColor = Colors.redAccent; // Couleur rouge plus vive
-    } else if (avancement < 66) {
-      progressColor = Colors.amber; // Couleur jaune plus vive
-    } else {
-      progressColor = Colors.greenAccent; // Couleur verte plus vive
+  int _calculerNombreLitsPourEquipe(Equipe equipe, Commande commande) {
+    int totalLits = 0;
+    for (var appartementId in equipe.appartementIds) {
+      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
+      totalLits += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
     }
+    return totalLits;
+  }
 
-    return Container(
-      alignment: Alignment.centerLeft, // Alignement du conteneur à gauche
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start, // Alignement des éléments de la colonne sur la gauche
-        children: [
-          Padding(
-            padding: EdgeInsets.only(left: 8.0), // Ajout d'un padding pour déplacer le texte vers la gauche
-            child: Text('', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          SizedBox(height: 4),
-          Padding(
-            padding: EdgeInsets.only(left: 8.0), // Ajout d'un padding pour déplacer le widget de progression vers la gauche
-            child: SizedBox(
-              height: 40.0, // Taille réduite
-              width: 40.0, // Taille réduite
-              child: Stack(
-                alignment: Alignment.center,
-                children: <Widget>[
-                  CircularProgressIndicator(
-                    value: avancement / 100,
-                    strokeWidth: 6.0, // Épaisseur réduite du trait
-                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                  ),
-                  Text(
-                    '${avancement.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 16, // Taille de police réduite
-                      fontWeight: FontWeight.bold,
-                      color: progressColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  int _calculerNombreSallesDeBainPourEquipe(Equipe equipe, Commande commande) {
+    int totalSallesDeBain = 0;
+    for (var appartementId in equipe.appartementIds) {
+      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
+      totalSallesDeBain += appartement.nombreSallesDeBains;
+    }
+    return totalSallesDeBain;
+  }
+
+  int _calculerNombreLits(Commande commande) {
+    int totalLits = 0;
+    for (var appartement in commande.appartements) {
+      totalLits += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
+    }
+    return totalLits;
+  }
+
+  int _calculerNombreSallesDeBain(Commande commande) {
+    int totalSallesDeBain = 0;
+    for (var appartement in commande.appartements) {
+      totalSallesDeBain += appartement.nombreSallesDeBains;
+    }
+    return totalSallesDeBain;
+  }
+
+  double _calculerAvancementGlobal(Commande commande) {
+    int totalAppartements = commande.appartements.length;
+    if (totalAppartements == 0) return 0.0;
+
+    int appartementsFait = commande.detailsAppartements.values.where((details) => details.menageEffectue).length;
+
+    return (appartementsFait / totalAppartements) * 100;
   }
 
   @override
@@ -587,7 +676,15 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             onSelected: (String result) {
               switch (result) {
                 case 'Modifier':
-                // Logique pour modifier la commande
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VisualiserCommandePage(
+                        commandeId: widget.commande.id,
+                        commande: widget.commande,
+                      ),
+                    ),
+                  );
                   break;
                 case 'Supprimer':
                   _showDeleteConfirmationDialog();
@@ -607,321 +704,335 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-            child: Wrap(
-              spacing: 8, // Espacement horizontal entre les boutons
-              runSpacing: 8, // Espacement vertical entre les lignes
-              alignment: WrapAlignment.end, // Alignement des boutons à droite
-              children: [
-                ElevatedButton(
-                  onPressed: _visualiserCommande,
-                  child: Text('Visualiser la commande', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _ajouterEquipe,
-                  child: Icon(Icons.group_add, color: Colors.white), // Icône pour ajouter une équipe
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                Visibility(
-                  visible: false, // Rendre le bouton invisible
-                  maintainSize: true, // Conserve la taille du bouton
-                  maintainAnimation: true, // Conserve l'animation du bouton
-                  maintainState: true, // Conserve l'état du bouton
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => AffectationPage()),
-                      );
-                    },
-                    child: Icon(Icons.person_add_alt_1, color: Colors.white), // Icône pour affecter le personnel
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _firestore.collection('commandes').doc(widget.commande.id).snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          Commande commande = Commande.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
+
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _visualiserCommande,
+                      child: Text('Visualiser la commande', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
-                  ),
+                    ElevatedButton(
+                      onPressed: () => _ajouterEquipe(commande),
+                      child: Icon(Icons.group_add, color: Colors.white),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-
-
-
-
-
-          Expanded(
-            child: ListView(
-
-              children: [
-                Visibility(
-                  visible: false, // Mettez ce paramètre à false pour rendre le bouton invisible
-                  maintainSize: true, // Maintient la taille du bouton même s'il est invisible
-                  maintainAnimation: true, // Maintient les animations
-                  maintainState: true, // Maintient l'état du bouton
-                  child: ElevatedButton(
-                    onPressed: _visualiserCommande,
-                    child: Text('Visualiser la commande'),
-                  ),
-                ),
-
-
-
-                ExpansionTile(
-                  title: Row(
+              ),
+              Card(
+                margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.calendar_today),
-                      SizedBox(width: 8),
-                      Text('Commande - ${DateFormat('dd/MM/yyyy').format(widget.commande.dateCommande)}', style: TextStyle(fontSize: 13)),
-                      SizedBox(width: 8),
-                      Icon(Icons.apartment),
-                      Text(' (${widget.commande.appartements.length})'),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.apartment, size: 20),
+                              SizedBox(width: 4),
+                              Text('Appartements: ${commande.appartements.length}', style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.bed, size: 20),
+                              SizedBox(width: 4),
+                              Text('Lits: ${_calculerNombreLits(commande)}', style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.bathtub, size: 20),
+                              SizedBox(width: 4),
+                              Text('SdB: ${_calculerNombreSallesDeBain(commande)}', style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          LinearPercentIndicator(
+                            width: MediaQuery.of(context).size.width - 40,
+                            lineHeight: 20.0,
+                            percent: _calculerAvancementGlobal(commande) / 100,
+                            center: Text("${_calculerAvancementGlobal(commande).toStringAsFixed(1)}%"),
+                            progressColor: Colors.green,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        children: _afficherPersonnelAffecte(),
+                      ),
                     ],
                   ),
-                  children: widget.commande.appartements.map((appartement) {
-                    DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
-                    String equipeAttribuee = _trouverEquipePourAppartement(appartement.id);
-                    return Column(
-                      children: [
-                        ListTile(
-                          leading: Icon(Icons.circle, color: _getColorForValidationStatus(details)), // Icône de cercle coloré
-                          title: Text('${appartement.numero}'),
-                          subtitle: Text('${appartement.typologie} - ${appartement.batiment}'),
-                          trailing: Text(equipeAttribuee), // Affiche l'équipe attribuée ici
-                          isThreeLine: true, // Permet d'avoir trois lignes
-                          onTap: () => _afficherOptionsAppartement(appartement),
-                          // État du ménage en bas
-                          dense: true, // Réduit l'espace entre les lignes
-                        ),
-                        // Affiche l'état du ménage en bas
-                        Padding(
-                          padding: EdgeInsets.only(left: 72), // Aligner avec le texte du ListTile
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(details.etatValidation.isNotEmpty ? details.etatValidation : "Non validé"),
-                              SizedBox(width: 8), // Espace supplémentaire
-                            ],
-                          ),
-                        ),
-                        Divider(), // Ajoute un fin trait pour séparer chaque appartement
-                      ],
-                    );
-                  }).toList(),
                 ),
-                ...widget.commande.equipes.map((equipe) {
-                  double avancementEquipe = _calculerAvancementEquipe(equipe) / 100;
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: commande.equipes.length,
+                  itemBuilder: (context, index) {
+                    Equipe equipe = commande.equipes[index];
+                    double avancementEquipe = _calculerAvancementEquipe(equipe, commande) / 100;
+                    double pourcentageLits = _calculerPourcentageLits(equipe, commande);
+                    double pourcentageSallesDeBain = _calculerPourcentageSallesDeBain(equipe, commande);
 
-
-
-                  return ExpansionTile(
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(equipe.nom),
-                        avancementEquipe > 0
-                            ? SizedBox(
-                          height: 20.0,
-                          width: 20.0,
-                          child: CircularProgressIndicator(
-                            value: avancementEquipe,
-                            strokeWidth: 3.0,
-                          ),
-                        )
-                            : SizedBox(),
-                      ],
-                    ),
-                    trailing: IconButton(
-                      icon: Icon(Icons.edit, color: Colors.black),
-                      onPressed: () => _showTeamOptions(equipe),
-                    ),
-                    children: equipe.appartementIds.map((id) {
-                      Appartement appartement = widget.commande.appartements.firstWhere((a) => a.id == id);
-                      DetailsAppartement details = widget.commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
-                      return Card(
-                        color: _getCardColor(details),
-                        child: ListTile(
-                          trailing: _getIconForValidationStatus(details),
-
-                          leading: details.prioritaire ? Icon(Icons.priority_high, color: Colors.red) : null,
-                          title: Text(
-                            ' ${appartement.numero}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                      child: Card(
+                        margin: EdgeInsets.symmetric(vertical: 8.0),
+                        child: ExpansionTile(
+                          title: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${appartement.typologie} - ${appartement.batiment}'),
-                              Text('État: ${details.etatValidation.isNotEmpty ? details.etatValidation : "Non validé"}'),
-                              if (details.note.isNotEmpty)
-                                Text('Note: ${details.note}', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(Icons.bedroom_child_outlined, size: 20),
-                                  SizedBox(width: 4),
-                                  Text('${appartement.nombreLitsSimples} lits simples'),
+                                  Text(equipe.nom, style: TextStyle(fontWeight: FontWeight.bold)),
+                                  IconButton(
+                                    icon: Icon(Icons.more_vert),
+                                    onPressed: () => _showTeamOptions(equipe, commande),
+                                  ),
                                 ],
                               ),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(Icons.king_bed, size: 20),
-                                  SizedBox(width: 4),
-                                  Text('${appartement.nombreLitsDoubles} lits doubles'),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.apartment, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('Appartements: ${equipe.appartementIds.length}'),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      LinearPercentIndicator(
+                                        width: 100.0,
+                                        lineHeight: 14.0,
+                                        percent: avancementEquipe,
+                                        center: Text("${(avancementEquipe * 100).toStringAsFixed(1)}%", style: TextStyle(fontSize: 12)),
+                                        progressColor: Colors.green,
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(Icons.bathtub, size: 20),
-                                  SizedBox(width: 4),
-                                  Text('${appartement.nombreSallesDeBains} SdB'),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bed, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('${pourcentageLits.toStringAsFixed(1)}%'),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bathtub, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('${pourcentageSallesDeBain.toStringAsFixed(1)}%'),
+                                    ],
+                                  ),
                                 ],
                               ),
+                              if (equipe.personnelIds.isNotEmpty) ...[
+                                SizedBox(height: 8),
+                                Text('Personnel:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Wrap(
+                                  spacing: 4,
+                                  children: equipe.personnelIds.map((personnelId) {
+                                    Personnel personnel = _personnelAffecte.firstWhere(
+                                          (p) => p.id == personnelId,
+                                      orElse: () => Personnel(
+                                        id: '',
+                                        identifiant: '',
+                                        nom: 'Inconnu',
+                                        prenom: '',
+                                        email: '',
+                                        telephone: '',
+                                        typeCompte: '',
+                                        estSuperviseur: false,
+                                        entrepriseId: '', residencesAffectees: [],
+                                      ),
+                                    );
+                                    return Chip(
+                                      label: Text('${personnel.prenom} ${personnel.nom}', style: TextStyle(fontSize: 12)),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             ],
                           ),
-                          onTap: () => _afficherOptionsValidation(appartement),
+                          trailing: Icon(Icons.keyboard_arrow_down),
+                          children: equipe.appartementIds.map((id) {
+                            Appartement appartement = commande.appartements.firstWhere((a) => a.id == id);
+                            DetailsAppartement details = commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
+                            return Card(
+                              color: _getCardColor(details),
+                              child: ListTile(
+                                trailing: _getIconForValidationStatus(details),
+                                leading: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (details.prioritaire)
+                                      Text('Prio', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    Text('Ordre: ${details.ordreAppartements}', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                title: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        ' ${appartement.numero}',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    Flexible(
+                                      child: Text(
+                                        'Bâtiment: ${appartement.batiment}',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (details.note.isNotEmpty)
+                                      Text('Note: ${details.note}', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 10,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(Icons.single_bed_outlined, size: 20),
+                                            SizedBox(width: 4),
+                                            Text('${appartement.nombreLitsSimples}'),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.king_bed_outlined, size: 20),
+                                            SizedBox(width: 4),
+                                            Text('${appartement.nombreLitsDoubles}'),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.bathtub_outlined, size: 20),
+                                            SizedBox(width: 4),
+                                            Text('${appartement.nombreSallesDeBains}'),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.person_outlined, size: 20),
+                                            SizedBox(width: 4),
+                                            Text('${appartement.nombrePersonnes}'),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.cleaning_services_outlined, size: 20),
+                                            SizedBox(width: 4),
+                                            Text('${details.typeMenage}'),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(width: 10),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'Typologie: ${appartement.typologie}',
+                                            style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                        Flexible(
+                                          child: Text(
+                                            details.estLibre ? 'Libre' : 'Occupé',
+                                            style: TextStyle(
+                                              color: details.estLibre ? Colors.green : Colors.red,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                onTap: () => _afficherOptionsValidation(appartement, commande),
+                              ),
+                            );
+                          }).toList(),
                         ),
-
-
-
-                      );
-
-                    }).toList(),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-
-  Future<void> _showPersonnelSelectionDialog() async {
-    Set<String> selectedPersonnelIds = Set<String>.from(widget.commande.personnelIds);
-    final List<Personnel> personnelList = await _fetchPersonnel();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Sélectionner le Personnel'),
-              content: SingleChildScrollView(
-                child: ListBody(
-                  children: personnelList.map((personnel) {
-                    return CheckboxListTile(
-                      title: Text('${personnel.prenom} ${personnel.nom}'),
-                      value: _isSelected(personnel, selectedPersonnelIds),
-                      onChanged: (bool? value) {
-                        if (value == true) {
-                          selectedPersonnelIds.add(personnel.id);
-                        } else {
-                          selectedPersonnelIds.remove(personnel.id);
-                        }
-                        setState(() {}); // Met à jour l'état local de la boîte de dialogue
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('Annuler'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                TextButton(
-                  child: Text('Valider'),
-                  onPressed: () {
-                    _updateCommandeWithSelectedPersonnel(selectedPersonnelIds);
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-
-  void _updateCommandeWithSelectedPersonnel(Set<String> selectedPersonnelIds) {
-    setState(() {
-      widget.commande.personnelIds = selectedPersonnelIds.toList();
-    });
-    // Mettez à jour la commande dans Firestore
-    FirebaseFirestore.instance.collection('commandes').doc(widget.commande.id).update({
-      'personnelIds': selectedPersonnelIds.toList(),
-    });
-  }
-
-  Future<List<Personnel>> _fetchPersonnel() async {
-    FirebaseFirestore firestore = FirebaseFirestore.instance;
-    String entrepriseId = widget.commande.entrepriseId; // Utilisation de l'ID de l'entreprise depuis l'objet commande
-
-    try {
-      QuerySnapshot querySnapshot = await firestore
-          .collection('personnel')
-          .where('entrepriseId', isEqualTo: entrepriseId)
-          .get();
-
-      return querySnapshot.docs
-          .map((doc) => Personnel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      print("Erreur lors de la récupération du personnel : $e");
-      return [];
+  List<Widget> _afficherPersonnelAffecte() {
+    List<Widget> personnelWidgets = [];
+    for (var personnel in _personnelAffecte) {
+      personnelWidgets.add(Card(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text('${personnel.prenom} ${personnel.nom}'),
+        ),
+      ));
     }
+    return personnelWidgets;
   }
-
-
-  Set<String> selectedPersonnelIds = Set<String>();
-
-  bool _isSelected(Personnel personnel, Set<String> selectedPersonnelIds) {
-    return selectedPersonnelIds.contains(personnel.id);
-  }
-
-  void _togglePersonnelSelection(Personnel personnel, bool isSelected) {
-    setState(() {
-      if (isSelected) {
-        selectedPersonnelIds.add(personnel.id);
-      } else {
-        selectedPersonnelIds.remove(personnel.id);
-      }
-    });
-  }
-
-
-
-
-
-
-
-
 
   void _visualiserCommande() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => VisualiserCommandePage(commande: widget.commande, commandeId: widget.commande.id,)),
+      MaterialPageRoute(builder: (context) => VisualiserCommandePage(commande: widget.commande, commandeId: widget.commande.id)),
     );
   }
-
 
   void _showDeleteConfirmationDialog() {
     showDialog(
@@ -941,8 +1052,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
               child: Text('Supprimer'),
               onPressed: () async {
                 await _deleteCommande();
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
-                Navigator.of(context).pop(); // Retourne à l'écran précédent
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -954,13 +1065,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   Future<void> _deleteCommande() async {
     try {
       await _firestore.collection('commandes').doc(widget.commande.id).delete();
-      // Afficher un message de succès ou naviguer vers un autre écran si nécessaire
     } catch (e) {
-      // Gérer l'erreur ici, par exemple afficher un message d'erreur
+      print("Erreur lors de la suppression de la commande : $e");
     }
   }
 }
-
-
-
-

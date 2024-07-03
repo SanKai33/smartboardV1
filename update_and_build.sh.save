@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Mettre à jour CocoaPods
+echo "Mise à jour de CocoaPods..."
+sudo gem install cocoapods
+
+# Naviguer dans le répertoire iOS
+cd ios
+
+# Mettre à jour les pods
+echo "Mise à jour des pods..."
+pod update
+
+# Revenir au répertoire racine du projet
+cd ..
+
+# Nettoyer le projet Flutter
+echo "Nettoyage du projet Flutter..."
+flutter clean
+
+# Récupérer les nouvelles dépendances
+echo "Récupération des nouvelles dépendances..."
+flutter pub get
+
+# Installer les pods
+cd ios
+echo "Installation des pods..."
+pod install
+cd ..
+
+# Construire le projet iOS
+echo "Construction du projet iOS..."
+flutter build ios
+
+echo "Mise à jour terminée avec succès!"
+
+
+
+chmod +x update_and_build.sh
+
+./update_and_build.sh
+

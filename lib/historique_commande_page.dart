@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -22,6 +21,7 @@ class _HistoriqueCommandePageState extends State<HistoriqueCommandePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Historique de la Commande'),
+        automaticallyImplyLeading: false, // This removes the back arrow
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.file_download),
@@ -85,12 +85,19 @@ class _HistoriqueCommandePageState extends State<HistoriqueCommandePage> {
         pageFormat: PdfPageFormat.a4,
         margin: pw.EdgeInsets.all(32),
         build: (pw.Context context) {
+          int totalLitsSimples = commande.appartements.fold(0, (sum, a) => sum + a.nombreLitsSimples);
+          int totalLitsDoubles = commande.appartements.fold(0, (sum, a) => sum + a.nombreLitsDoubles);
+          int totalSallesDeBains = commande.appartements.fold(0, (sum, a) => sum + a.nombreSallesDeBains);
+          int totalMenages = commande.detailsAppartements.values.where((d) => d.typeMenage == 'Ménage').length;
+          int totalRecouches = commande.detailsAppartements.values.where((d) => d.typeMenage == 'Recouche').length;
+          int totalDegraissages = commande.detailsAppartements.values.where((d) => d.typeMenage == 'Dégraissage').length;
+          int totalFermetures = commande.detailsAppartements.values.where((d) => d.typeMenage == 'Fermeture').length;
+
           return <pw.Widget>[
             pw.Header(level: 0, child: pw.Text('Historique de la Commande')),
             pw.Paragraph(text: 'Résidence: ${commande.nomResidence}'),
             pw.Paragraph(text: 'Date de la commande: ${DateFormat('dd/MM/yyyy').format(commande.dateCommande)}'),
             pw.Paragraph(text: 'Nombre total d\'appartements: ${commande.appartements.length}'),
-
             pw.Table.fromTextArray(
               context: context,
               data: <List<String>>[
@@ -108,6 +115,21 @@ class _HistoriqueCommandePageState extends State<HistoriqueCommandePage> {
                 }),
               ],
             ),
+            pw.SizedBox(height: 20),
+            pw.Header(level: 1, child: pw.Text('Résumé des Types de Ménage')),
+            pw.Table.fromTextArray(
+              context: context,
+              data: <List<String>>[
+                <String>['Type', 'Total'],
+                ['Lits Simples', '$totalLitsSimples'],
+                ['Lits Doubles', '$totalLitsDoubles'],
+                ['Salles de Bains', '$totalSallesDeBains'],
+                ['Ménages', '$totalMenages'],
+                ['Recouches', '$totalRecouches'],
+                ['Dégraissages', '$totalDegraissages'],
+                ['Fermetures', '$totalFermetures'],
+              ],
+            ),
           ];
         },
       ),
@@ -123,5 +145,4 @@ class _HistoriqueCommandePageState extends State<HistoriqueCommandePage> {
       }
     }
     return 'Non attribuée';
-  }
-}
+  }}

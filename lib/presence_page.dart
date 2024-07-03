@@ -1,17 +1,12 @@
-import 'dart:io';
-import 'package:barcode/barcode.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'historique_présence.dart';
 import 'models/personnel.dart';
 import 'models/presence.dart';
 import 'models/residence.dart';
+
 
 
 class PresencePage extends StatefulWidget {
@@ -26,162 +21,113 @@ class PresencePage extends StatefulWidget {
 class _PresencePageState extends State<PresencePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   DateTime _selectedDate = DateTime.now();
-  bool _isAfternoon = DateTime.now().hour >= 12;
-  Map<String, bool> _presentMorning = {};
-  Map<String, bool> _presentAfternoon = {};
+  Map<String, bool> _presenceStatus = {};
 
   @override
   void initState() {
     super.initState();
-    _chargerPresences();
+    _loadPresence();
+    _schedulePresenceArchiving();
   }
 
-  Future<DateTime?> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2025),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      _chargerPresences();
-    }
-    return picked;
-  }
-
-  void _chargerPresences() async {
+  Future<void> _loadPresence() async {
     DateTime startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     DateTime endOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59);
 
     var snapshot = await _firestore.collection('fichesPresence')
         .where('date', isGreaterThanOrEqualTo: startOfDay)
         .where('date', isLessThan: endOfDay)
-        .limit(1)
         .get();
 
     if (snapshot.docs.isNotEmpty) {
       var fichePresence = FichePresence.fromFirestore(snapshot.docs.first);
 
       setState(() {
-        _presentMorning = fichePresence.statutPresenceMatin;
-        _presentAfternoon = fichePresence.statutPresenceApresMidi;
+        _presenceStatus = fichePresence.statutPresence;
       });
     } else {
       setState(() {
-        _presentMorning = {};
-        _presentAfternoon = {};
+        _presenceStatus = {};
       });
     }
   }
 
-  Future<void> _generatePdfForDate(DateTime date) async {
-    final pdf = pw.Document();
+  Future<void> _schedulePresenceArchiving() async {
+    DateTime now = DateTime.now();
+    DateTime midnight = DateTime(now.year, now.month, now.day + 1);
 
-    final data = await _fetchPresenceData(date);
+    Duration untilMidnight = midnight.difference(now);
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.all(32),
-        build: (pw.Context context) {
-          return <pw.Widget>[
-            pw.Header(level: 0, child: pw.Text('Rapport de présence')),
-            pw.Paragraph(text: 'Date: ${DateFormat('dd/MM/yyyy').format(date)}'),
-            pw.Paragraph(text: 'Entreprise ID: ${widget.entrepriseId}'),
-            pw.Table.fromTextArray(
-              context: context,
-              data: <List<String>>[
-                <String>['Résidence', 'Nom', 'Prénom', 'Téléphone', 'Présent Matin', 'Présent Après-midi'],
-                ...data,
-              ],
-            ),
-          ];
-        },
-      ),
-    );
-
-    final output = await getTemporaryDirectory();
-    final file = File('${output.path}/Rapport_${DateFormat('yyyy-MM-dd').format(date)}.pdf');
-    await file.writeAsBytes(await pdf.save());
-    await Printing.sharePdf(bytes: await pdf.save(), filename: 'Rapport_${DateFormat('yyyy-MM-dd').format(date)}.pdf');
+    Future.delayed(untilMidnight, () async {
+      await _archivePresence();
+      _resetPresenceStatus();
+      _schedulePresenceArchiving(); // Schedule the next archive
+    });
   }
 
-  Future<List<List<String>>> _fetchPresenceData(DateTime date) async {
-    List<List<String>> data = [];
-    var residencesSnapshot = await _firestore.collection('residences')
-        .where('entrepriseId', isEqualTo: widget.entrepriseId)
-        .get();
-
-    for (var residenceDoc in residencesSnapshot.docs) {
-      var residence = Residence.fromFirestore(residenceDoc);
-      var personnelsSnapshot = await _firestore.collection('personnel')
-          .where(FieldPath.documentId, whereIn: residence.personnelIds)
-          .get();
-
-      for (var personnelDoc in personnelsSnapshot.docs) {
-        var personnel = Personnel.fromFirestore(personnelDoc);
-        var presentMorning = _presentMorning[personnelDoc.id] == true ? 'Oui' : 'Non';
-        var presentAfternoon = _presentAfternoon[personnelDoc.id] == true ? 'Oui' : 'Non';
-        data.add([
-          residence.nom,
-          personnel.nom,
-          personnel.prenom,
-          personnel.telephone,
-          presentMorning,
-          presentAfternoon
-        ]);
-      }
-    }
-
-    return data;
-  }
-
-  void _validerPresence(String personnelId, bool isAfternoon) async {
+  Future<void> _archivePresence() async {
     DateTime startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     DateTime endOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59);
 
     var snapshot = await _firestore.collection('fichesPresence')
         .where('date', isGreaterThanOrEqualTo: startOfDay)
         .where('date', isLessThan: endOfDay)
-        .limit(1)
         .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      var fichePresence = FichePresence.fromFirestore(snapshot.docs.first);
+      await _firestore.collection('historiquePresence').add(fichePresence.toMap());
+    }
+  }
+
+  Future<void> _resetPresenceStatus() async {
+    var personnelsSnapshot = await _firestore.collection('personnel')
+        .where('entrepriseId', isEqualTo: widget.entrepriseId)
+        .get();
+
+    for (var doc in personnelsSnapshot.docs) {
+      var personnel = Personnel.fromFirestore(doc);
+      personnel = personnel.copyWith(statutPresence: 'non présent');
+      await _firestore.collection('personnel').doc(personnel.id).update(personnel.toMap());
+    }
+  }
+
+  void _validatePresence(String personnelId, bool isPresent) async {
+    DateTime startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    DateTime endOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59);
+
+    var snapshot = await _firestore.collection('fichesPresence')
+        .where('date', isGreaterThanOrEqualTo: startOfDay)
+        .where('date', isLessThan: endOfDay)
+        .get();
+
+    var personnelDoc = await _firestore.collection('personnel').doc(personnelId).get();
+    var personnel = Personnel.fromFirestore(personnelDoc);
 
     if (snapshot.docs.isNotEmpty) {
       var docId = snapshot.docs.first.id;
       var fichePresence = FichePresence.fromFirestore(snapshot.docs.first);
 
-      if (isAfternoon) {
-        fichePresence.statutPresenceApresMidi[personnelId] = true;
-      } else {
-        fichePresence.statutPresenceMatin[personnelId] = true;
-      }
+      fichePresence.statutPresence[personnelId] = isPresent;
+      personnel = personnel.copyWith(statutPresence: isPresent ? 'présent' : 'non présent');
 
       await _firestore.collection('fichesPresence').doc(docId).update(fichePresence.toMap());
     } else {
       var newFichePresence = FichePresence(
         id: '',
         date: _selectedDate,
-        statutPresenceMatin: isAfternoon ? {} : {personnelId: true},
-        statutPresenceApresMidi: isAfternoon ? {personnelId: true} : {},
+        statutPresence: {personnelId: isPresent},
       );
 
       await _firestore.collection('fichesPresence').add(newFichePresence.toMap());
+      personnel = personnel.copyWith(statutPresence: isPresent ? 'présent' : 'non présent');
     }
 
-    setState(() {
-      if (isAfternoon) {
-        _presentAfternoon[personnelId] = true;
-      } else {
-        _presentMorning[personnelId] = true;
-      }
-    });
-  }
+    await _firestore.collection('personnel').doc(personnel.id).update(personnel.toMap());
 
-  String _generateQRCodeData() {
-    return 'https://example.com/validate?date=${DateFormat('yyyy-MM-dd').format(_selectedDate)}&id=${widget.entrepriseId}';
+    setState(() {
+      _presenceStatus[personnelId] = isPresent;
+    });
   }
 
   @override
@@ -191,27 +137,23 @@ class _PresencePageState extends State<PresencePage> {
         title: Text('Fiche de Présence - ${DateFormat('dd/MM/yyyy').format(_selectedDate)}'),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.picture_as_pdf),
-            onPressed: () async {
-              await _generatePdfForDate(_selectedDate);
-            },
-          ),
-          IconButton(
             icon: Icon(Icons.history),
             onPressed: () {
-              // Logique pour afficher l'historique des présences
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HistoriquePresencePage(entrepriseId: widget.entrepriseId),
+                ),
+              );
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          Center(
-            child: _buildQrCode(),
-          ),
           Padding(
             padding: EdgeInsets.all(8.0),
-            child: Text('Nombre de présents ce matin : ${_presentMorning.values.where((present) => present).length}'),
+            child: Text('Nombre de présents : ${_presenceStatus.values.where((status) => status).length}'),
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -222,7 +164,7 @@ class _PresencePageState extends State<PresencePage> {
                 if (snapshot.hasData) {
                   return ListView(
                     children: snapshot.data!.docs.map((doc) {
-                      return _buildResidenceCard(doc);
+                      return _buildResidenceCard(Residence.fromFirestore(doc));
                     }).toList(),
                   );
                 } else {
@@ -236,80 +178,71 @@ class _PresencePageState extends State<PresencePage> {
     );
   }
 
-  Widget _buildQrCode() {
-    final qrCode = Barcode.qrCode();
-    final qrData = _generateQRCodeData();
+  Widget _buildResidenceCard(Residence residence) {
+    return FutureBuilder<QuerySnapshot>(
+      future: _firestore.collection('personnel')
+          .where('residenceAffectee', isEqualTo: residence.id)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Text('Erreur de chargement');
+        } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Card(
+            elevation: 4.0,
+            margin: EdgeInsets.all(8.0),
+            child: ListTile(
+              title: Text(residence.nom, style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('Aucun agent affecté'),
+            ),
+          );
+        } else {
+          int nbAgents = snapshot.data!.docs.length;
+          int nbPresents = snapshot.data!.docs.where((doc) {
+            String personnelId = doc.id;
+            return _presenceStatus[personnelId] == true;
+          }).length;
 
-    final qrSvg = qrCode.toSvg(
-      qrData,
-      width: 200,
-      height: 200,
-      drawText: false,
-    );
+          return Card(
+            elevation: 4.0,
+            margin: EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(residence.nom, style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Agents affectés: $nbAgents\nPrésents: $nbPresents'),
+                ),
+                Divider(),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    var personnelDoc = snapshot.data!.docs[index];
+                    var personnel = Personnel.fromFirestore(personnelDoc);
 
-    return Container(
-      width: 200,
-      height: 200,
-      child: SvgPicture.string(qrSvg),
-    );
-  }
-
-  Widget _buildResidenceCard(DocumentSnapshot doc) {
-    Residence residence = Residence.fromFirestore(doc);
-
-    return Card(
-      elevation: 4.0,
-      margin: EdgeInsets.all(8.0),
-      child: Column(
-        children: [
-          ListTile(
-            title: Text(residence.nom, style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(residence.adresse ?? 'Adresse non disponible'),
-          ),
-          Divider(),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: residence.personnelIds.length,
-            itemBuilder: (context, index) {
-              String personnelId = residence.personnelIds[index];
-
-              return FutureBuilder<DocumentSnapshot>(
-                future: _firestore.collection('personnel').doc(personnelId).get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done && snapshot.data != null) {
-                    Personnel personnel = Personnel.fromFirestore(snapshot.data!);
-
-                    return ListTile(
-                      title: Text('${personnel.nom} ${personnel.prenom}'),
-                      subtitle: Text('Téléphone : ${personnel.telephone}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Switch(
-                            value: _isAfternoon ? _presentAfternoon[personnelId] ?? false : _presentMorning[personnelId] ?? false,
-                            onChanged: (value) {
-                              _validerPresence(personnelId, _isAfternoon);
-                            },
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              _validerPresence(personnelId, _isAfternoon);
-                            },
-                            child: Text('Valider'),
-                          ),
-                        ],
+                    return Card(
+                      color: Colors.white,
+                      margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      child: ListTile(
+                        title: Text('${personnel.nom} ${personnel.prenom}', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('Téléphone : ${personnel.telephone}'),
+                        trailing: Checkbox(
+                          value: _presenceStatus[personnel.id] ?? false,
+                          onChanged: (value) {
+                            _validatePresence(personnel.id, value!);
+                          },
+                        ),
                       ),
                     );
-                  } else {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                },
-              );
-            },
-          ),
-        ],
-      ),
+                  },
+                ),
+              ],
+            ),
+          );
+        }
+      },
     );
   }
 }
