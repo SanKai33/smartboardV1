@@ -465,17 +465,11 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: buildSummaryTable(commande),
-                                ),
+                                child: buildSummaryTable(commande),
                               ),
                               SizedBox(width: 20),
                               Expanded(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: buildPersonnelTable(commande),
-                                ),
+                                child: buildPersonnelTable(commande),
                               ),
                             ],
                           ),
@@ -618,29 +612,48 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
     int totalDegraissages = commande.detailsAppartements.values.where((d) => d.typeMenage == 'Dégraissage').length;
     int totalFermetures = commande.detailsAppartements.values.where((d) => d.typeMenage == 'Fermeture').length;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 20.0,
-        dataRowHeight: 30.0,
-        headingRowColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-          return Colors.grey[200]!;
-        }),
-        border: TableBorder.all(color: Colors.grey[300]!, width: 1),
-        columns: const <DataColumn>[
-          DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
-        ],
-        rows: [
-          DataRow(cells: [DataCell(Text('Lits Simples')), DataCell(Text('$totalLitsSimples'))]),
-          DataRow(cells: [DataCell(Text('Lits Doubles')), DataCell(Text('$totalLitsDoubles'))]),
-          DataRow(cells: [DataCell(Text('Salles de Bains')), DataCell(Text('$totalSallesDeBains'))]),
-          DataRow(cells: [DataCell(Text('Ménages')), DataCell(Text('$totalMenages'))]),
-          DataRow(cells: [DataCell(Text('Recouches')), DataCell(Text('$totalRecouches'))]),
-          DataRow(cells: [DataCell(Text('Dégraissages')), DataCell(Text('$totalDegraissages'))]),
-          DataRow(cells: [DataCell(Text('Fermetures')), DataCell(Text('$totalFermetures'))]),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: DataTable(
+            columnSpacing: 20.0,
+            dataRowHeight: 30.0,
+            headingRowColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+              return Colors.grey[200]!;
+            }),
+            border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+            columns: const <DataColumn>[
+              DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+            rows: [
+              DataRow(cells: [DataCell(Text('Lits Simples')), DataCell(Text('$totalLitsSimples'))]),
+              DataRow(cells: [DataCell(Text('Lits Doubles')), DataCell(Text('$totalLitsDoubles'))]),
+              DataRow(cells: [DataCell(Text('Salles de Bains')), DataCell(Text('$totalSallesDeBains'))]),
+            ],
+          ),
+        ),
+        Expanded(
+          child: DataTable(
+            columnSpacing: 20.0,
+            dataRowHeight: 30.0,
+            headingRowColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+              return Colors.grey[200]!;
+            }),
+            border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+            columns: const <DataColumn>[
+              DataColumn(label: Text('Type de Ménage', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+            rows: [
+              DataRow(cells: [DataCell(Text('Ménages')), DataCell(Text('$totalMenages'))]),
+              DataRow(cells: [DataCell(Text('Recouches')), DataCell(Text('$totalRecouches'))]),
+              DataRow(cells: [DataCell(Text('Dégraissages')), DataCell(Text('$totalDegraissages'))]),
+              DataRow(cells: [DataCell(Text('Fermetures')), DataCell(Text('$totalFermetures'))]),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -679,7 +692,23 @@ class _VisualiserCommandePageState extends State<VisualiserCommandePage> {
                   DataCell(Text(personnel.prenom)),
                   DataCell(Text(personnel.telephone)),
                   DataCell(Text(equipe)),
-                  DataCell(Text(personnel.statutPresence)), // Affichage du statut de présence
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: personnel.statutPresence == 'présent' ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(personnel.statutPresence),
+                      ],
+                    ),
+                  ),
                 ],
               );
             }).toList(),

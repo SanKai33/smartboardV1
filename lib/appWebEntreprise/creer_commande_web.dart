@@ -1,9 +1,8 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:reorderables/reorderables.dart';
+
 import '../main_screen.dart';
 import '../models/appartement.dart';
 import '../models/commande.dart';
@@ -25,12 +24,14 @@ class CombinedSelectionDetailsPage extends StatefulWidget {
 class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsPage> {
   DateTime? selectedDate;
   Map<String, bool> selectedAppartements = {};
+  List<String> selectedOrder = [];
   Map<String, int> ordreAppartements = {};
   Map<String, DetailsAppartement> appartementDetails = {};
   List<Appartement> appartements = [];
   bool isLoading = true;
   Map<String, TextEditingController> ordreControllers = {};
   Map<String, TextEditingController> noteControllers = {};
+  TextEditingController noteGlobaleController = TextEditingController();
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
 
       for (var appartement in commande.appartements) {
         selectedAppartements[appartement.id] = true;
+        selectedOrder.add(appartement.id);
 
         if (commande.detailsAppartements.containsKey(appartement.id)) {
           var details = commande.detailsAppartements[appartement.id]!;
@@ -64,6 +66,8 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
           noteControllers[appartement.id] = TextEditingController();
         }
       }
+      noteGlobaleController.text = commande.noteGlobale;
+      _updateOrder();
     });
   }
 
@@ -89,6 +93,7 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
           appartementDetails[appart.id] = DetailsAppartement();
           ordreAppartements[appart.id] = 0;
           noteControllers[appart.id] = TextEditingController();
+          ordreControllers[appart.id] = TextEditingController(text: '0');
         }
         isLoading = false;
       });
@@ -105,6 +110,10 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
     for (var controller in noteControllers.values) {
       controller.dispose();
     }
+    for (var controller in ordreControllers.values) {
+      controller.dispose();
+    }
+    noteGlobaleController.dispose();
     super.dispose();
   }
 
@@ -206,8 +215,8 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
         detailsAppartements: detailsWithOrder,
         equipes: [],
         validation: {},
-        ordreAppartements: {},
         personnelIds: [],
+        noteGlobale: noteGlobaleController.text, ordreAppartements: {},
       );
 
       if (widget.commandeExistante != null) {
@@ -262,11 +271,16 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
     await _showConfirmationDialog(context);
   }
 
-  void _updateOrder(String appartementId) {
+  void _updateOrder() {
     int currentOrder = 1;
-    for (var appartId in selectedAppartements.keys) {
+    for (var appartId in selectedOrder) {
       if (selectedAppartements[appartId] == true) {
-        ordreAppartements[appartId] = currentOrder++;
+        ordreAppartements[appartId] = currentOrder;
+        ordreControllers[appartId]?.text = currentOrder.toString();
+        currentOrder++;
+      } else {
+        ordreAppartements[appartId] = 0;
+        ordreControllers[appartId]?.text = '0';
       }
     }
     setState(() {});
@@ -287,25 +301,63 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
     int order = 1;
     for (var appartement in appartements) {
       if (selectedAppartements[appartement.id] == true) {
-        ordreAppartements[appartement.id] = order++;
+        ordreAppartements[appartement.id] = order;
+        ordreControllers[appartement.id]?.text = order.toString();
+        order++;
+      } else {
+        ordreAppartements[appartement.id] = 0;
+        ordreControllers[appartement.id]?.text = '0';
       }
     }
     setState(() {});
+  }
+
+  void _resetOrder() {
+    setState(() {
+      for (var appartementId in selectedAppartements.keys) {
+        if (selectedAppartements[appartementId] == true) {
+          ordreAppartements[appartementId] = 0;
+          ordreControllers[appartementId]?.text = '0';
+        }
+      }
+      _updateOrder();
+    });
+  }
+
+  int _calculateTotalLitsSimples() {
+    return appartements
+        .where((appart) => selectedAppartements[appart.id] ?? false)
+        .fold(0, (total, appart) => total + appart.nombreLitsSimples);
+  }
+
+  int _calculateTotalLitsDoubles() {
+    return appartements
+        .where((appart) => selectedAppartements[appart.id] ?? false)
+        .fold(0, (total, appart) => total + appart.nombreLitsDoubles);
+  }
+
+  int _calculateTotalSallesDeBain() {
+    return appartements
+        .where((appart) => selectedAppartements[appart.id] ?? false)
+        .fold(0, (total, appart) => total + appart.nombreSallesDeBains);
   }
 
   @override
   Widget build(BuildContext context) {
     String formattedDate = selectedDate != null ? DateFormat('dd/MM/yyyy').format(selectedDate!) : 'Sélectionnez une date';
     bool areAllSelected = appartements.every((appart) => selectedAppartements[appart.id] ?? false);
+    int selectedCount = selectedAppartements.values.where((isSelected) => isSelected).length;
 
     void toggleSelectAll() {
       setState(() {
         if (areAllSelected) {
           selectedAppartements.updateAll((key, value) => false);
+          selectedOrder.clear();
         } else {
           selectedAppartements.updateAll((key, value) => true);
-          _updateOrder("");
+          selectedOrder = appartements.map((a) => a.id).toList();
         }
+        _updateOrder();
       });
     }
 
@@ -379,136 +431,205 @@ class _CombinedSelectionDetailsPageState extends State<CombinedSelectionDetailsP
               scrollDirection: Axis.horizontal,
               child: SingleChildScrollView(
                 scrollDirection: Axis.vertical,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 200.0),
-                  child: DataTable(
-                    columnSpacing: 38.0,
-                    dataRowHeight: 50.0,
-                    headingRowColor: MaterialStateProperty.resolveWith<Color>(
-                          (Set<MaterialState> states) {
-                        return Colors.grey[200]!;
-                      },
-                    ),
-                    border: TableBorder.all(color: Colors.grey[300]!, width: 1),
-                    columns: const <DataColumn>[
-                      DataColumn(label: Text('Sélection', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Appartement', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Bâtiment', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Prioritaire', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Note', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Type de Ménage', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Ordre de Priorité', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('État Libre', style: TextStyle(fontWeight: FontWeight.bold))),
-                    ],
-                    rows: List<DataRow>.generate(
-                      appartements.length,
-                          (index) {
-                        final appartement = appartements[index];
-                        final isSelected = selectedAppartements[appartement.id] ?? false;
-                        final details = appartementDetails[appartement.id] ??= DetailsAppartement();
-                        final noteController = noteControllers[appartement.id] ??= TextEditingController(text: details.note);
-                        final orderController = ordreControllers[appartement.id] ??= TextEditingController(text: details.ordreAppartements.toString());
-
-                        return DataRow(
-                          selected: isSelected,
-                          color: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
-                            if (isSelected) {
-                              return Colors.lightGreen.shade50;
-                            }
-                            return null;
-                          }),
-                          cells: <DataCell>[
-                            DataCell(
-                              Checkbox(
-                                value: isSelected,
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    selectedAppartements[appartement.id] = value ?? false;
-                                    if (value == true) {
-                                      _updateOrder(appartement.id);
-                                    } else {
-                                      ordreAppartements[appartement.id] = 0;
-                                      _updateOrdreAppartements();
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                            DataCell(Text(appartement.numero, style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataCell(Text(appartement.batiment, style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataCell(Checkbox(
-                              value: details.prioritaire,
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  details.prioritaire = value!;
-                                });
-                              },
-                            )),
-                            DataCell(
-                              Container(
-                                width: 150,
-                                child: TextField(
-                                  controller: noteController,
-                                  decoration: InputDecoration(
-                                    contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                                    border: OutlineInputBorder(),
-                                    hintText: 'Note',
+                child: Column(
+                  children: [
+                    // Affichage du compteur d'appartements sélectionnés
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text('Appartements sélectionnés: $selectedCount', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 500), // Ajuster la largeur pour aligner le bouton avec la colonne "Ordre de Priorité"
+                              ElevatedButton(
+                                onPressed: _resetOrder,
+                                child: Text('Effacer Ordre de Priorité', style: TextStyle(color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
                                   ),
                                 ),
                               ),
-                            ),
-                            DataCell(DropdownButton<String>(
-                              value: details.typeMenage,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  details.typeMenage = newValue!;
-                                });
-                              },
-                              items: <String>['Ménage', 'Recouche', 'Dégraissage', 'Fermeture']
-                                  .map<DropdownMenuItem<String>>((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
-                            )),
-                            DataCell(
-                              Container(
-                                width: 100,
-                                child: TextField(
-                                  keyboardType: TextInputType.number,
-                                  controller: orderController,
-                                  decoration: InputDecoration(
-                                    contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                                    border: OutlineInputBorder(),
-                                    hintText: 'Ordre',
-                                  ),
-                                  onChanged: (value) {
-                                    int? order = int.tryParse(value);
-                                    if (order != null) {
-                                      ordreAppartements[appartement.id] = order;
-                                    }
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    DataTable(
+                      columnSpacing: 38.0,
+                      dataRowHeight: 50.0,
+                      headingRowColor: MaterialStateProperty.resolveWith<Color>(
+                            (Set<MaterialState> states) {
+                          return Colors.grey[200]!;
+                        },
+                      ),
+                      border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+                      columns: const <DataColumn>[
+                        DataColumn(label: Text('Sélection', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Appartement', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Bâtiment', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Prioritaire', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Note', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Type de Ménage', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Ordre de Priorité', style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('État Libre', style: TextStyle(fontWeight: FontWeight.bold))),
+                      ],
+                      rows: List<DataRow>.generate(
+                        appartements.length,
+                            (index) {
+                          final appartement = appartements[index];
+                          final isSelected = selectedAppartements[appartement.id] ?? false;
+                          final details = appartementDetails[appartement.id] ??= DetailsAppartement();
+                          final noteController = noteControllers[appartement.id] ??= TextEditingController(text: details.note);
+                          final orderController = ordreControllers[appartement.id] ??= TextEditingController(text: ordreAppartements[appartement.id]?.toString() ?? '0');
+
+                          return DataRow(
+                            selected: isSelected,
+                            color: MaterialStateProperty.resolveWith<Color?>((Set<MaterialState> states) {
+                              if (isSelected) {
+                                return Colors.lightGreen.shade50;
+                              }
+                              return null;
+                            }),
+                            cells: <DataCell>[
+                              DataCell(
+                                Checkbox(
+                                  value: isSelected,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      selectedAppartements[appartement.id] = value ?? false;
+                                      if (value == true) {
+                                        selectedOrder.add(appartement.id);
+                                      } else {
+                                        selectedOrder.remove(appartement.id);
+                                      }
+                                      _updateOrder();
+                                    });
                                   },
                                 ),
                               ),
-                            ),
-                            DataCell(
-                              Switch(
-                                value: details.estLibre,
-                                onChanged: (bool value) {
+                              DataCell(Text(appartement.numero, style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(appartement.batiment, style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Checkbox(
+                                value: details.prioritaire,
+                                onChanged: (bool? value) {
                                   setState(() {
-                                    details.estLibre = value;
+                                    details.prioritaire = value!;
                                   });
                                 },
-                                activeColor: Colors.green,
-                                inactiveThumbColor: Colors.red,
+                              )),
+                              DataCell(
+                                Container(
+                                  width: 150,
+                                  child: TextField(
+                                    controller: noteController,
+                                    decoration: InputDecoration(
+                                      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                                      border: OutlineInputBorder(),
+                                      hintText: 'Note',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(DropdownButton<String>(
+                                value: details.typeMenage,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    details.typeMenage = newValue!;
+                                  });
+                                },
+                                items: <String>['Ménage', 'Recouche', 'Dégraissage', 'Fermeture', 'Ouverture', 'Ménage à blanc']
+                                    .map<DropdownMenuItem<String>>((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value),
+                                  );
+                                }).toList(),
+                              )),
+                              DataCell(
+                                Container(
+                                  width: 100,
+                                  child: TextField(
+                                    keyboardType: TextInputType.number,
+                                    controller: orderController,
+                                    decoration: InputDecoration(
+                                      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                                      border: OutlineInputBorder(),
+                                      hintText: 'Ordre',
+                                    ),
+                                    onChanged: (value) {
+                                      int? order = int.tryParse(value);
+                                      if (order != null) {
+                                        ordreAppartements[appartement.id] = order;
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Switch(
+                                  value: details.estLibre,
+                                  onChanged: (bool value) {
+                                    setState(() {
+                                      details.estLibre = value;
+                                    });
+                                  },
+                                  activeColor: Colors.green,
+                                  inactiveThumbColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Container(
+                        width: MediaQuery.of(context).size.width * 0.6, // Ajuster la largeur pour qu'elle soit moins large
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Note Globale:', style: TextStyle(fontWeight: FontWeight.bold)),
+                            SizedBox(height: 8),
+                            TextField(
+                              controller: noteGlobaleController,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(),
+                                hintText: 'Écrire une note globale concernant la commande',
                               ),
                             ),
                           ],
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
+                    // Affichage du total des lits simples, lits doubles et salles de bains
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Container(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Total Lits Simples: ${_calculateTotalLitsSimples()}', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Total Lits Doubles: ${_calculateTotalLitsDoubles()}', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Total Salles de Bain: ${_calculateTotalSallesDeBain()}', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

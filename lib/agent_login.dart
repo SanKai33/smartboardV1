@@ -13,7 +13,6 @@ class AgentLoginPage extends StatefulWidget {
 class _AgentLoginPageState extends State<AgentLoginPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   String _identifiant = '';
-  String _password = '';
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
@@ -35,11 +34,6 @@ class _AgentLoginPageState extends State<AgentLoginPage> {
         var userDoc = querySnapshot.docs.first;
         var userData = userDoc.data() as Map<String, dynamic>;
         print("Utilisateur trouvé: $userData");
-
-        if (userData['password'] != _password) {
-          _showErrorDialog('Mot de passe incorrect');
-          return;
-        }
 
         // Utiliser l'identifiant du document auth pour récupérer le document personnel correspondant
         QuerySnapshot personnelQuerySnapshot = await FirebaseFirestore.instance
@@ -112,22 +106,6 @@ class _AgentLoginPageState extends State<AgentLoginPage> {
                   },
                   onSaved: (value) {
                     _identifiant = value!;
-                  },
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: TextFormField(
-                  decoration: InputDecoration(labelText: 'Mot de passe'),
-                  obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Veuillez entrer votre mot de passe';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) {
-                    _password = value!;
                   },
                 ),
               ),

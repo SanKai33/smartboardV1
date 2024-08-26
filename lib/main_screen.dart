@@ -49,60 +49,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: kIsWeb ? _buildWebAppBar() : _buildMobileAppBar(),
+      appBar: _buildWebAppBar(),
       body: IndexedStack(
         index: _selectedIndex,
         children: _widgetOptions,
       ),
-      bottomNavigationBar: !kIsWeb
-          ? BottomNavigationBar(
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifications'),
-          BottomNavigationBarItem(
-            icon: PopupMenuButton<int>(
-              icon: Icon(Icons.more_vert),
-              onSelected: (int index) {
-                switch (index) {
-                  case 4:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ResidencesPage(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 5:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => PresencePage(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 6:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => MessageriePage(currentEntrepriseId: widget.entrepriseId, currentClientId: '')));
-                    break;
-                  case 7:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ParametreCompte(entrepriseId: widget.entrepriseId)));
-                    break;
-                  case 8:
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => PersonnelPage(entrepriseId: widget.entrepriseId)));
-                    break;
-                  default:
-                    break;
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<int>>[
-                PopupMenuItem<int>(value: 4, child: Row(children: [Icon(Icons.apartment, color: Colors.grey), SizedBox(width: 10), Text('Résidences')])),
-                PopupMenuItem<int>(value: 5, child: Row(children: [Icon(Icons.access_time, color: Colors.grey), SizedBox(width: 10), Text('Présence')])),
-                PopupMenuItem<int>(value: 6, child: Row(children: [Icon(Icons.message, color: Colors.grey), SizedBox(width: 10), Text('Messagerie')])),
-                PopupMenuItem<int>(value: 7, child: Row(children: [Icon(Icons.settings, color: Colors.grey), SizedBox(width: 10), Text('Paramètres')])),
-                PopupMenuItem<int>(value: 8, child: Row(children: [Icon(Icons.group, color: Colors.grey), SizedBox(width: 10), Text('Personnel')])),
-              ],
-            ),
-            label: 'Plus',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          if (index < 3) _onItemTapped(index);
-        },
-      )
-          : null,
+      drawer: _buildWebDrawer(),
     );
   }
 
@@ -122,7 +74,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
         ],
       ),
-      actions: <Widget>[
+      actions: [
         _buildWebMenuButton('Home', Icons.home, 0),
         _buildWebMenuButton('Historique', Icons.history, 1),
         _buildWebMenuButton('Notifications', Icons.notifications, 2),
@@ -134,22 +86,37 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  AppBar _buildMobileAppBar() {
-    return AppBar(
-      automaticallyImplyLeading: false, // Remove the back button
-      title: Row(
-        children: [
-          Image.asset('assets/images/logo.png', height: 40),
-          SizedBox(width: 10),
-          Text('Smartboard'),
-          Spacer(),
-          if (_currentOrders.isNotEmpty)
-            Text(
-              'Commande en cours',
-              style: TextStyle(fontSize: 18, color: Colors.red),
+  Drawer _buildWebDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          DrawerHeader(
+            child: Text('Smartboard', style: TextStyle(color: Colors.white)),
+            decoration: BoxDecoration(
+              color: Colors.blue,
             ),
+          ),
+          _buildDrawerItem('Home', Icons.home, 0),
+          _buildDrawerItem('Historique', Icons.history, 1),
+          _buildDrawerItem('Notifications', Icons.notifications, 2),
+          _buildDrawerItem('Personnel', Icons.group, 3),
+          _buildDrawerItem('Présence', Icons.access_time, 4),
+          _buildDrawerItem('Résidences', Icons.apartment, 5),
+          _buildDrawerItem('Paramètres', Icons.settings, 6),
         ],
       ),
+    );
+  }
+
+  ListTile _buildDrawerItem(String title, IconData icon, int index) {
+    return ListTile(
+      title: Text(title),
+      leading: Icon(icon),
+      onTap: () {
+        _onItemTapped(index);
+        Navigator.of(context).pop(); // Close the drawer
+      },
     );
   }
 

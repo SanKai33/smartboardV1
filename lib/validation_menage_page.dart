@@ -3,11 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:percent_indicator/linear_percent_indicator.dart';
+
 import 'Visualisation.dart';
-import 'affectation_personnel.dart';
-import 'messagerie_de_group.dart';
+
 import 'models/appartement.dart';
 import 'models/commande.dart';
 import 'models/detailAppartement.dart';
@@ -30,10 +28,12 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   String _fcmToken = '';
   Timer? _timer;
   List<Personnel> _personnelAffecte = [];
+  TextEditingController noteGlobaleController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    noteGlobaleController.text = widget.commande.noteGlobale;
     _fetchPersonnelAffecte();
   }
 
@@ -60,9 +60,11 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   }
 
   void _updateCommande(Commande commande) async {
+    commande.noteGlobale = noteGlobaleController.text;
     await _firestore.collection('commandes').doc(commande.id).update({
       'detailsAppartements': commande.detailsAppartements.map((key, value) => MapEntry(key, value.toMap())),
       'equipes': commande.equipes.map((e) => e.toMap()).toList(),
+      'noteGlobale': commande.noteGlobale,
     });
   }
 
@@ -196,13 +198,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     if (details.etatValidation.startsWith('Retour:')) {
       return Colors.red.shade100;
     } else {
-      switch (details.etatValidation) {
-        case 'Ménage validé':
-        case 'Contrôle validé':
-          return Colors.white;
-        default:
-          return Colors.white;
-      }
+      return Colors.white;
     }
   }
 
@@ -274,8 +270,10 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
 
   Future<void> _showAddPersonnelDialog(Equipe equipe, Commande commande) async {
     List<Personnel> personnelList = await _fetchAvailablePersonnel();
-    List<Personnel> personnelAffecte = personnelList.where((p) => p.residencesAffectees == widget.commande.residenceId).toList();
-    List<Personnel> personnelGeneral = personnelList.where((p) => p.residencesAffectees != widget.commande.residenceId).toList();
+    List<Personnel> personnelAffecte =
+    personnelList.where((p) => p.residencesAffectees == widget.commande.residenceId).toList();
+    List<Personnel> personnelGeneral =
+    personnelList.where((p) => p.residencesAffectees != widget.commande.residenceId).toList();
 
     showDialog(
       context: context,
@@ -380,11 +378,13 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                 child: ListBody(
                   children: commande.appartements.map((appartement) {
                     String equipeAffectation = _trouverEquipeAffectation(appartement.id, commande);
-                    bool isAssignedToAnotherTeam = equipeAffectation.isNotEmpty && equipeAffectation != equipe.nom;
+                    bool isAssignedToAnotherTeam =
+                        equipeAffectation.isNotEmpty && equipeAffectation != equipe.nom;
 
                     return CheckboxListTile(
-                      title: Text('Appartement ${appartement.numero} - Bâtiment ${appartement.batiment}' +
-                          (isAssignedToAnotherTeam ? ' (Affecté à $equipeAffectation)' : '')),
+                      title: Text(
+                          'Appartement ${appartement.numero} - Bâtiment ${appartement.batiment}' +
+                              (isAssignedToAnotherTeam ? ' (Affecté à $equipeAffectation)' : '')),
                       value: selectedAppartements[appartement.id],
                       onChanged: isAssignedToAnotherTeam
                           ? null
@@ -438,9 +438,11 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     return '';
   }
 
-  void _applyAppartementSelection(Map<String, bool> selectedAppartements, Equipe equipe, Commande commande) {
+  void _applyAppartementSelection(
+      Map<String, bool> selectedAppartements, Equipe equipe, Commande commande) {
     setState(() {
-      equipe.appartementIds = selectedAppartements.entries.where((entry) => entry.value).map((entry) => entry.key).toList();
+      equipe.appartementIds =
+          selectedAppartements.entries.where((entry) => entry.value).map((entry) => entry.key).toList();
       _updateCommande(commande);
     });
   }
@@ -453,50 +455,46 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
   }
 
   bool _peutFinaliserCommande(Commande commande) {
-    return commande.detailsAppartements.values.every((details) => details.etatValidation == 'Contrôle validé');
+    return commande.detailsAppartements.values
+        .every((details) => details.etatValidation == 'Contrôle validé');
   }
 
   double _calculerAvancementEquipe(Equipe equipe, Commande commande) {
     int totalAppartementsEquipe = equipe.appartementIds.length;
     if (totalAppartementsEquipe == 0) return 0.0;
 
-    int appartementsFait = equipe.appartementIds.where((id) => commande.detailsAppartements[id]?.menageEffectue ?? false).length;
+    int appartementsFait = equipe.appartementIds
+        .where((id) => commande.detailsAppartements[id]?.menageEffectue ?? false)
+        .length;
 
     return (appartementsFait / totalAppartementsEquipe) * 100;
   }
 
-  double _calculerPourcentageLits(Equipe equipe, Commande commande) {
-    int totalLitsEquipe = 0;
-    int totalLitsCommande = 0;
-
+  int _calculerNombreLitsSimplesPourEquipe(Equipe equipe, Commande commande) {
+    int totalLitsSimples = 0;
     for (var appartementId in equipe.appartementIds) {
       var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
-      totalLitsEquipe += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
+      totalLitsSimples += appartement.nombreLitsSimples;
     }
-
-    for (var appartement in commande.appartements) {
-      totalLitsCommande += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
-    }
-
-    if (totalLitsCommande == 0) return 0.0;
-    return (totalLitsEquipe / totalLitsCommande) * 100;
+    return totalLitsSimples;
   }
 
-  double _calculerPourcentageSallesDeBain(Equipe equipe, Commande commande) {
-    int totalSallesDeBainEquipe = 0;
-    int totalSallesDeBainCommande = 0;
-
+  int _calculerNombreLitsDoublesPourEquipe(Equipe equipe, Commande commande) {
+    int totalLitsDoubles = 0;
     for (var appartementId in equipe.appartementIds) {
       var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
-      totalSallesDeBainEquipe += appartement.nombreSallesDeBains;
+      totalLitsDoubles += appartement.nombreLitsDoubles;
     }
+    return totalLitsDoubles;
+  }
 
-    for (var appartement in commande.appartements) {
-      totalSallesDeBainCommande += appartement.nombreSallesDeBains;
+  int _calculerNombreSallesDeBainPourEquipe(Equipe equipe, Commande commande) {
+    int totalSallesDeBain = 0;
+    for (var appartementId in equipe.appartementIds) {
+      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
+      totalSallesDeBain += appartement.nombreSallesDeBains;
     }
-
-    if (totalSallesDeBainCommande == 0) return 0.0;
-    return (totalSallesDeBainEquipe / totalSallesDeBainCommande) * 100;
+    return totalSallesDeBain;
   }
 
   String _trouverEquipePourAppartement(String appartementId, Commande commande) {
@@ -623,24 +621,6 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
     return Icon(Icons.circle, color: Colors.grey);
   }
 
-  int _calculerNombreLitsPourEquipe(Equipe equipe, Commande commande) {
-    int totalLits = 0;
-    for (var appartementId in equipe.appartementIds) {
-      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
-      totalLits += appartement.nombreLitsSimples + appartement.nombreLitsDoubles;
-    }
-    return totalLits;
-  }
-
-  int _calculerNombreSallesDeBainPourEquipe(Equipe equipe, Commande commande) {
-    int totalSallesDeBain = 0;
-    for (var appartementId in equipe.appartementIds) {
-      var appartement = commande.appartements.firstWhere((a) => a.id == appartementId);
-      totalSallesDeBain += appartement.nombreSallesDeBains;
-    }
-    return totalSallesDeBain;
-  }
-
   int _calculerNombreLits(Commande commande) {
     int totalLits = 0;
     for (var appartement in commande.appartements) {
@@ -711,7 +691,13 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
             return Center(child: CircularProgressIndicator());
           }
 
-          Commande commande = Commande.fromMap(snapshot.data!.data() as Map<String, dynamic>, snapshot.data!.id);
+          // Vérification des données de la commande
+          var data = snapshot.data?.data() as Map<String, dynamic>?;
+          if (data == null || data.isEmpty) {
+            return Center(child: Text('Aucune donnée disponible'));
+          }
+
+          Commande commande = Commande.fromMap(data, snapshot.data!.id);
 
           return Column(
             children: [
@@ -747,6 +733,10 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
               ),
               Card(
                 margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: Colors.black, width: 1),
+                ),
                 child: Padding(
                   padding: EdgeInsets.all(10),
                   child: Column(
@@ -766,28 +756,53 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                             children: [
                               Icon(Icons.bed, size: 20),
                               SizedBox(width: 4),
-                              Text('Lits: ${_calculerNombreLits(commande)}', style: TextStyle(fontSize: 16)),
+                              Text('Lits Simples: ${_calculerNombreLitsSimplesPourEquipe(commande.equipes.isNotEmpty ? commande.equipes[0] : Equipe(nom: 'N/A', appartementIds: [], personnelIds: []), commande)}', style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.king_bed_outlined, size: 20),
+                              SizedBox(width: 4),
+                              Text('Lits Doubles: ${_calculerNombreLitsDoublesPourEquipe(commande.equipes.isNotEmpty ? commande.equipes[0] : Equipe(nom: 'N/A', appartementIds: [], personnelIds: []), commande)}', style: TextStyle(fontSize: 16)),
                             ],
                           ),
                           Row(
                             children: [
                               Icon(Icons.bathtub, size: 20),
                               SizedBox(width: 4),
-                              Text('SdB: ${_calculerNombreSallesDeBain(commande)}', style: TextStyle(fontSize: 16)),
+                              Text('SdB: ${_calculerNombreSallesDeBainPourEquipe(commande.equipes.isNotEmpty ? commande.equipes[0] : Equipe(nom: 'N/A', appartementIds: [], personnelIds: []), commande)}', style: TextStyle(fontSize: 16)),
                             ],
                           ),
                         ],
                       ),
                       SizedBox(height: 10),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          LinearPercentIndicator(
-                            width: MediaQuery.of(context).size.width - 40,
-                            lineHeight: 20.0,
-                            percent: _calculerAvancementGlobal(commande) / 100,
-                            center: Text("${_calculerAvancementGlobal(commande).toStringAsFixed(1)}%"),
-                            progressColor: Colors.green,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Note Globale:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                                SizedBox(height: 8),
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.blue),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    noteGlobaleController.text,
+                                    style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          CircularProgressIndicator(
+                            value: _calculerAvancementGlobal(commande) / 100,
+                            strokeWidth: 6.0,
                           ),
                         ],
                       ),
@@ -805,13 +820,15 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                   itemBuilder: (context, index) {
                     Equipe equipe = commande.equipes[index];
                     double avancementEquipe = _calculerAvancementEquipe(equipe, commande) / 100;
-                    double pourcentageLits = _calculerPourcentageLits(equipe, commande);
-                    double pourcentageSallesDeBain = _calculerPourcentageSallesDeBain(equipe, commande);
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10.0),
                       child: Card(
                         margin: EdgeInsets.symmetric(vertical: 8.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(color: Colors.black, width: 1),
+                        ),
                         child: ExpansionTile(
                           title: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,34 +853,36 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                                       Text('Appartements: ${equipe.appartementIds.length}'),
                                     ],
                                   ),
-                                  Row(
-                                    children: [
-                                      LinearPercentIndicator(
-                                        width: 100.0,
-                                        lineHeight: 14.0,
-                                        percent: avancementEquipe,
-                                        center: Text("${(avancementEquipe * 100).toStringAsFixed(1)}%", style: TextStyle(fontSize: 12)),
-                                        progressColor: Colors.green,
-                                      ),
-                                    ],
+                                  CircularProgressIndicator(
+                                    value: avancementEquipe,
+                                    strokeWidth: 6.0,
                                   ),
                                 ],
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.bed, size: 16),
+                                      Icon(Icons.child_friendly, size: 16),
                                       SizedBox(width: 4),
-                                      Text('${pourcentageLits.toStringAsFixed(1)}%'),
+                                      Text('Lits Simples: ${_calculerNombreLitsSimplesPourEquipe(equipe, commande)}'),
                                     ],
                                   ),
+                                  SizedBox(width: 10),
                                   Row(
                                     children: [
-                                      Icon(Icons.bathtub, size: 16),
+                                      Icon(Icons.king_bed_outlined, size: 16),
                                       SizedBox(width: 4),
-                                      Text('${pourcentageSallesDeBain.toStringAsFixed(1)}%'),
+                                      Text('Lits Doubles: ${_calculerNombreLitsDoublesPourEquipe(equipe, commande)}'),
+                                    ],
+                                  ),
+                                  SizedBox(width: 10),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bathtub_outlined, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('SdB: ${_calculerNombreSallesDeBainPourEquipe(equipe, commande)}'),
                                     ],
                                   ),
                                 ],
@@ -901,6 +920,10 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                             Appartement appartement = commande.appartements.firstWhere((a) => a.id == id);
                             DetailsAppartement details = commande.detailsAppartements[appartement.id] ?? DetailsAppartement();
                             return Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(color: Colors.black, width: 1),
+                              ),
                               color: _getCardColor(details),
                               child: ListTile(
                                 trailing: _getIconForValidationStatus(details),
@@ -934,9 +957,8 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                                   children: [
                                     if (details.note.isNotEmpty)
                                       Text('Note: ${details.note}', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
-                                    Wrap(
-                                      spacing: 10,
-                                      runSpacing: 10,
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
@@ -945,6 +967,7 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                                             Text('${appartement.nombreLitsSimples}'),
                                           ],
                                         ),
+                                        SizedBox(width: 10),
                                         Row(
                                           children: [
                                             Icon(Icons.king_bed_outlined, size: 20),
@@ -952,25 +975,12 @@ class _ValidationMenagePageState extends State<ValidationMenagePage> {
                                             Text('${appartement.nombreLitsDoubles}'),
                                           ],
                                         ),
+                                        SizedBox(width: 10),
                                         Row(
                                           children: [
                                             Icon(Icons.bathtub_outlined, size: 20),
                                             SizedBox(width: 4),
                                             Text('${appartement.nombreSallesDeBains}'),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.person_outlined, size: 20),
-                                            SizedBox(width: 4),
-                                            Text('${appartement.nombrePersonnes}'),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.cleaning_services_outlined, size: 20),
-                                            SizedBox(width: 4),
-                                            Text('${details.typeMenage}'),
                                           ],
                                         ),
                                       ],

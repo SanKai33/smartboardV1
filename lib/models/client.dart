@@ -7,8 +7,11 @@ class Client {
   String email;
   String telephone;
   String entrepriseId;
-  List<String> residencesAffectees; // Liste des résidences affectées
-  bool estControleur; // Ajouté comme paramètre requis
+  List<String> residencesAffectees;
+  bool estControleur;
+  String identityCardUrl; // Nouveau champ pour URL de la carte d'identité
+  String drivingLicenseUrl; // Nouveau champ pour URL du permis de conduire
+  List<String> otherFilesUrls; // Nouveau champ pour les autres fichiers
 
   Client({
     required this.id,
@@ -17,9 +20,30 @@ class Client {
     required this.email,
     required this.telephone,
     required this.entrepriseId,
-    required this.residencesAffectees, // Liste des résidences affectées
-    required this.estControleur, // Ajouté comme paramètre requis
+    required this.residencesAffectees,
+    required this.estControleur,
+    this.identityCardUrl = '',
+    this.drivingLicenseUrl = '',
+    this.otherFilesUrls = const [],
   });
+
+  factory Client.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    return Client(
+      id: doc.id,
+      nom: data['nom'] ?? '',
+      prenom: data['prenom'] ?? '',
+      email: data['email'] ?? '',
+      telephone: data['telephone'] ?? '',
+      entrepriseId: data['entrepriseId'] ?? '',
+      residencesAffectees: List<String>.from(data['residencesAffectees'] ?? []),
+      estControleur: data['estControleur'] ?? false,
+      identityCardUrl: data['identityCardUrl'] ?? '',
+      drivingLicenseUrl: data['drivingLicenseUrl'] ?? '',
+      otherFilesUrls: List<String>.from(data['otherFilesUrls'] ?? []),
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -28,22 +52,38 @@ class Client {
       'email': email,
       'telephone': telephone,
       'entrepriseId': entrepriseId,
-      'residencesAffectees': residencesAffectees, // Liste des résidences affectées
-      'estControleur': estControleur, // Ajout à la méthode toMap
+      'residencesAffectees': residencesAffectees,
+      'estControleur': estControleur,
+      'identityCardUrl': identityCardUrl,
+      'drivingLicenseUrl': drivingLicenseUrl,
+      'otherFilesUrls': otherFilesUrls,
     };
   }
 
-  static Client fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  Client copyWith({
+    String? nom,
+    String? prenom,
+    String? email,
+    String? telephone,
+    String? entrepriseId,
+    List<String>? residencesAffectees,
+    bool? estControleur,
+    String? identityCardUrl,
+    String? drivingLicenseUrl,
+    List<String>? otherFilesUrls,
+  }) {
     return Client(
-      id: doc.id,
-      nom: data['nom'] ?? '',
-      prenom: data['prenom'] ?? '',
-      email: data['email'] ?? '',
-      telephone: data['telephone'] ?? '',
-      entrepriseId: data['entrepriseId'] ?? '',
-      residencesAffectees: List<String>.from(data['residencesAffectees'] ?? []), // Liste des résidences affectées
-      estControleur: data['estControleur'] ?? false, // Récupération de la propriété depuis Firestore
+      id: this.id,
+      nom: nom ?? this.nom,
+      prenom: prenom ?? this.prenom,
+      email: email ?? this.email,
+      telephone: telephone ?? this.telephone,
+      entrepriseId: entrepriseId ?? this.entrepriseId,
+      residencesAffectees: residencesAffectees ?? this.residencesAffectees,
+      estControleur: estControleur ?? this.estControleur,
+      identityCardUrl: identityCardUrl ?? this.identityCardUrl,
+      drivingLicenseUrl: drivingLicenseUrl ?? this.drivingLicenseUrl,
+      otherFilesUrls: otherFilesUrls ?? this.otherFilesUrls,
     );
   }
 }

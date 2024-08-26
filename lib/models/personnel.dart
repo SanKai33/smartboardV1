@@ -9,9 +9,12 @@ class Personnel {
   String telephone;
   String typeCompte;
   bool estSuperviseur;
-  List<String> residencesAffectees; // Liste des résidences affectées
+  List<String> residencesAffectees;
   String entrepriseId;
-  String statutPresence; // Nouveau champ
+  String statutPresence;
+  String identityCardUrl; // Nouveau champ pour URL de la carte d'identité
+  String drivingLicenseUrl; // Nouveau champ pour URL du permis de conduire
+  List<String> otherFilesUrls; // Nouveau champ pour les autres fichiers
 
   Personnel({
     required this.id,
@@ -24,7 +27,10 @@ class Personnel {
     required this.estSuperviseur,
     required this.residencesAffectees,
     required this.entrepriseId,
-    this.statutPresence = 'non présent', // Par défaut à "non présent"
+    this.statutPresence = 'non présent',
+    this.identityCardUrl = '',
+    this.drivingLicenseUrl = '',
+    this.otherFilesUrls = const [],
   });
 
   factory Personnel.fromFirestore(DocumentSnapshot doc) {
@@ -39,9 +45,12 @@ class Personnel {
       telephone: data['telephone'] ?? '',
       typeCompte: data['typeCompte'] ?? '',
       estSuperviseur: data['estSuperviseur'] ?? false,
-      residencesAffectees: List<String>.from(data['residencesAffectees'] ?? []), // Liste des résidences affectées
+      residencesAffectees: List<String>.from(data['residencesAffectees'] ?? []),
       entrepriseId: data['entrepriseId'] ?? '',
       statutPresence: data['statutPresence'] ?? 'non présent',
+      identityCardUrl: data['identityCardUrl'] ?? '',
+      drivingLicenseUrl: data['drivingLicenseUrl'] ?? '',
+      otherFilesUrls: List<String>.from(data['otherFilesUrls'] ?? []),
     );
   }
 
@@ -54,9 +63,12 @@ class Personnel {
       'telephone': telephone,
       'typeCompte': typeCompte,
       'estSuperviseur': estSuperviseur,
-      'residencesAffectees': residencesAffectees, // Liste des résidences affectées
+      'residencesAffectees': residencesAffectees,
       'entrepriseId': entrepriseId,
       'statutPresence': statutPresence,
+      'identityCardUrl': identityCardUrl,
+      'drivingLicenseUrl': drivingLicenseUrl,
+      'otherFilesUrls': otherFilesUrls,
     };
   }
 
@@ -71,6 +83,9 @@ class Personnel {
     List<String>? residencesAffectees,
     String? entrepriseId,
     String? statutPresence,
+    String? identityCardUrl,
+    String? drivingLicenseUrl,
+    List<String>? otherFilesUrls,
   }) {
     return Personnel(
       id: this.id,
@@ -84,6 +99,9 @@ class Personnel {
       residencesAffectees: residencesAffectees ?? this.residencesAffectees,
       entrepriseId: entrepriseId ?? this.entrepriseId,
       statutPresence: statutPresence ?? this.statutPresence,
+      identityCardUrl: identityCardUrl ?? this.identityCardUrl,
+      drivingLicenseUrl: drivingLicenseUrl ?? this.drivingLicenseUrl,
+      otherFilesUrls: otherFilesUrls ?? this.otherFilesUrls,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/appAgent/parametrer_commpte_agent.dart';
+import 'package:smartboard/appAgent/presence_page_agent.dart';
 import '../calendar_page.dart';
 import '../messagerie.dart';
 import '../notifications_page.dart';
@@ -26,9 +27,9 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
   void initState() {
     super.initState();
     _widgetOptions = [
-      HomePageAgent(entrepriseId: widget.entrepriseId),
+      HomePageAgent(entrepriseId: widget.entrepriseId, agentId: widget.agentId),
       CalendarPage(),
-      NotificationsPage(entrepriseId: widget.entrepriseId, clientId: widget.clientId,),
+      NotificationsPage(entrepriseId: widget.entrepriseId, clientId: widget.clientId),
     ];
   }
 
@@ -46,7 +47,8 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
         index: _selectedIndex,
         children: _widgetOptions,
       ),
-      bottomNavigationBar: !kIsWeb ? BottomNavigationBar(
+      bottomNavigationBar: !kIsWeb
+          ? BottomNavigationBar(
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
@@ -80,7 +82,8 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
         onTap: (index) {
           if (index < 3) _onItemTapped(index);
         },
-      ) : null,
+      )
+          : null,
     );
   }
 
@@ -91,7 +94,6 @@ class _MainScreenAgentState extends State<MainScreenAgent> {
         _buildWebMenuButton('Home', Icons.home, 0),
         _buildWebMenuButton('Calendar', Icons.calendar_today, 1),
         _buildWebMenuButton('Notifications', Icons.notifications, 2),
-        IconButton(icon: Icon(Icons.qr_code), onPressed: () => _onItemTapped(5)),
       ],
     );
   }

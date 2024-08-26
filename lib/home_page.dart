@@ -2,14 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import 'package:smartboard/selection_appartement_page.dart';
-import 'package:smartboard/validation_menage_page.dart';
+
+import 'Visualisation.dart';
 import 'appWebEntreprise/creer_commande_web.dart';
 import 'historique_commande_page.dart';
 import 'models/commande.dart';
+
 import 'models/entreprise.dart';
 import 'models/residence.dart';
+import 'validation_menage_page.dart';
 
 class HomePage extends StatelessWidget {
   final String entrepriseId;
@@ -214,28 +216,54 @@ class CommandesEnCoursWidget extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
-              child: ListTile(
-                title: Text(
-                  commande.nomResidence,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text('${DateFormat('dd/MM/yyyy – kk:mm').format(commande.dateCommande.toLocal())}'),
-                trailing: Container(
-                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent,
-                    borderRadius: BorderRadius.circular(8),
+              child: Stack(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => ValidationMenagePage(commande: commande),
+                      ));
+                    },
+                    child: ListTile(
+                      title: Text(
+                        commande.nomResidence,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text('${DateFormat('dd/MM/yyyy – kk:mm').format(commande.dateCommande.toLocal())}'),
+                    ),
                   ),
-                  child: Text(
-                    '${pourcentageAvancement.toStringAsFixed(0)}% avancé',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.greenAccent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${pourcentageAvancement.toStringAsFixed(0)}% avancé',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        IconButton(
+                          icon: Icon(Icons.remove_red_eye, color: Colors.black),
+                          onPressed: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (context) => VisualiserCommandePage(
+                                commandeId: commande.id,
+                                commande: commande,
+                              ),
+                            ));
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => ValidationMenagePage(commande: commande),
-                  ));
-                },
+                ],
               ),
             );
           },

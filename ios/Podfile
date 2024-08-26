@@ -1,16 +1,9 @@
-# Uncomment this line to define a global platform for your project
 platform :ios, '17.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
-project '/Users/lasnam/Desktop/smartboard/ios/Runner.xcodeproj'
-
-project 'Runner', {
-  'Debug' => :debug,
-  'Profile' => :release,
-  'Release' => :release,
-}
+project 'Runner', 'Debug' => :debug, 'Profile' => :release, 'Release' => :release
 
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
@@ -35,13 +28,12 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Ajoutez les pods Firebase avec les versions appropriées
-    pod 'Firebase/Core', '10.27.0'
-    pod 'Firebase/Auth', '10.27.0'
-    pod 'Firebase/Firestore', '10.27.0'
-    pod 'Firebase/Storage', '10.27.0'
-    pod 'Firebase/Analytics', '10.27.0'
-    pod 'Firebase/Messaging', '10.27.0'
+  # Mise à jour des versions à 10.29.0 pour toutes les dépendances Firebase
+  pod 'Firebase/Auth', '10.29.0'
+  pod 'Firebase/Firestore', '10.29.0'
+  pod 'Firebase/Storage', '10.29.0'
+  pod 'Firebase/Analytics', '10.29.0'
+  pod 'Firebase/Messaging', '10.29.0'
 
   target 'RunnerTests' do
     inherit! :search_paths
@@ -54,13 +46,6 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['SWIFT_VERSION'] = '5.6'
       config.build_settings['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] = 'YES'
-    end
-
-    # Ajoutez ce script pour copier les fichiers nécessaires
-    if ['leveldb-library', 'abseil', 'BoringSSL-GRPC'].include? target.name
-      target.resources_build_phase.add_file_references([installer.sandbox.root + 'leveldb-library/leveldb_Privacy.bundle'])
-      target.resources_build_phase.add_file_references([installer.sandbox.root + 'abseil/xcprivacy.bundle'])
-      target.resources_build_phase.add_file_references([installer.sandbox.root + 'BoringSSL-GRPC/openssl_grpc.bundle'])
     end
   end
 end

@@ -14,6 +14,7 @@ class Commande {
   List<Equipe> equipes;
   Map<String, String> validation;
   List<String> personnelIds;
+  String noteGlobale;
 
   Commande({
     required this.id,
@@ -25,7 +26,8 @@ class Commande {
     required this.detailsAppartements,
     required this.equipes,
     required this.validation,
-    required this.personnelIds, required Map ordreAppartements,
+    required this.personnelIds,
+    required this.noteGlobale, required Map ordreAppartements,
   });
 
   factory Commande.fromMap(Map<String, dynamic> map, String documentId) {
@@ -39,7 +41,8 @@ class Commande {
       detailsAppartements: (map['detailsAppartements'] as Map<String, dynamic>?)?.map((key, value) => MapEntry(key, DetailsAppartement.fromMap(value))) ?? {},
       equipes: (map['equipes'] as List<dynamic>? ?? []).map((e) => Equipe.fromMap(e as Map<String, dynamic>)).toList(),
       validation: Map<String, String>.from(map['validation'] ?? {}),
-      personnelIds: List<String>.from(map['personnelIds'] ?? []), ordreAppartements: {},
+      personnelIds: List<String>.from(map['personnelIds'] ?? []),
+      noteGlobale: map['noteGlobale'] ?? '', ordreAppartements: {},
     );
   }
 
@@ -54,6 +57,7 @@ class Commande {
       'equipes': equipes.map((x) => x.toMap()).toList(),
       'validation': validation,
       'personnelIds': personnelIds,
+      'noteGlobale': noteGlobale,
     };
   }
 }

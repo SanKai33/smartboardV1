@@ -1,18 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../appWebEntreprise/creer_commande_web.dart';
 
 import '../historique_commande_page.dart';
 import '../models/commande.dart';
 import '../models/entreprise.dart';
+import '../models/personnel.dart';
+
+import '../models/residence.dart';
+import '../selection_appartement_page.dart';
 import '../validation_menage_page.dart';
 
 class HomePageAgent extends StatelessWidget {
   final String entrepriseId;
+  final String agentId;
 
-  HomePageAgent({required this.entrepriseId});
+  HomePageAgent({required this.entrepriseId, required this.agentId});
 
   Future<String> _fetchEntrepriseName(String entrepriseId) async {
     DocumentSnapshot snapshot = await FirebaseFirestore.instance.collection('entreprises').doc(entrepriseId).get();
@@ -23,93 +31,207 @@ class HomePageAgent extends StatelessWidget {
     return '';
   }
 
+  Future<Personnel> _fetchPersonnelDetails(String agentId) async {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance.collection('personnel').doc(agentId).get();
+    if (snapshot.exists && snapshot.data() is Map) {
+      return Personnel.fromFirestore(snapshot);
+    }
+    throw Exception('Personnel not found');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: !kIsWeb ? AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: AssetImage('assets/images/icon.png'),
-            ),
-            SizedBox(width: 10),
-            FutureBuilder<String>(
-              future: _fetchEntrepriseName(entrepriseId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return CircularProgressIndicator();
-                }
-                return Text(snapshot.data ?? '');
-              },
-            ),
-            Spacer(),
-          ],
-        ),
-      ) : null,
-      body: kIsWeb ? Column(
-        children: [
-          // Bandeau de design "Commandes en cours"
-          Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.5),
-                    spreadRadius: 0,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
+    return FutureBuilder<Personnel>(
+      future: _fetchPersonnelDetails(agentId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Erreur lors de la récupération des informations de l\'agent'));
+        }
+
+        Personnel personnel = snapshot.data!;
+        bool isSuperviseur = personnel.estSuperviseur;
+
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: !kIsWeb
+                ? AppBar(
+              title: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundImage: AssetImage('assets/images/icon.png'),
                   ),
+                  SizedBox(width: 10),
+                  FutureBuilder<String>(
+                    future: _fetchEntrepriseName(entrepriseId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return CircularProgressIndicator();
+                      }
+                      return Text(snapshot.data ?? '');
+                    },
+                  ),
+                  Spacer(),
                 ],
               ),
-              child: Text(
-                'Commandes en cours',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+            )
+                : null,
+            body: kIsWeb
+                ? Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.5),
+                                spreadRadius: 1,
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            'Commandes en cours',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: CommandesEnCoursWidget(
+                            entrepriseId: entrepriseId,
+                            agentId: agentId,
+                            residencesAffectees: personnel.residencesAffectees,
+                            isSuperviseur: isSuperviseur,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
+            )
+                : Stack(
+              children: [
+                Column(
+                  children: [
+                    TabBar(
+                      tabs: [
+                        Tab(text: 'Commandes en cours'),
+                        Tab(text: 'Commandes passées'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          CommandesEnCoursWidget(
+                            entrepriseId: entrepriseId,
+                            agentId: agentId,
+                            residencesAffectees: personnel.residencesAffectees,
+                            isSuperviseur: isSuperviseur,
+                          ),
+                          CommandesPasseesWidget(
+                            entrepriseId: entrepriseId,
+                            agentId: agentId,
+                            residencesAffectees: personnel.residencesAffectees,
+                            isSuperviseur: isSuperviseur,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (isSuperviseur)
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return Dialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: CreerCommandePopup(entrepriseId: entrepriseId),
+                            );
+                          },
+                        );
+                      },
+                      child: Icon(Icons.add),
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+              ],
             ),
+            floatingActionButton: kIsWeb && isSuperviseur
+                ? FloatingActionButton.extended(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: CreerCommandePopup(entrepriseId: entrepriseId),
+                    );
+                  },
+                );
+              },
+              icon: Icon(Icons.add),
+              label: Text('Créer Commande'),
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+            )
+                : null,
           ),
-
-          Expanded(
-            child: CommandesEnCoursWidget(entrepriseId: entrepriseId),
-          ),
-        ],
-      ) : Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: CommandesEnCoursWidget(entrepriseId: entrepriseId),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
 class CommandesEnCoursWidget extends StatelessWidget {
   final String entrepriseId;
+  final String agentId;
+  final List<String> residencesAffectees;
+  final bool isSuperviseur;
 
-  CommandesEnCoursWidget({required this.entrepriseId});
+  CommandesEnCoursWidget({required this.entrepriseId, required this.agentId, required this.residencesAffectees, required this.isSuperviseur});
 
   @override
   Widget build(BuildContext context) {
     DateTime now = DateTime.now();
     DateTime startOfDay = DateTime(now.year, now.month, now.day);
 
+    Query commandesQuery = FirebaseFirestore.instance
+        .collection('commandes')
+        .where('entrepriseId', isEqualTo: entrepriseId)
+        .where('dateCommande', isGreaterThanOrEqualTo: startOfDay);
+
+    if (!isSuperviseur) {
+      commandesQuery = commandesQuery.where('residenceId', whereIn: residencesAffectees);
+    }
+
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('commandes')
-          .where('entrepriseId', isEqualTo: entrepriseId)
-          .where('dateCommande', isGreaterThanOrEqualTo: startOfDay)
-          .snapshots(),
+      stream: commandesQuery.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Erreur lors du chargement des commandes'));
@@ -122,6 +244,15 @@ class CommandesEnCoursWidget extends StatelessWidget {
             .map((doc) => Commande.fromMap(doc.data() as Map<String, dynamic>, doc.id))
             .toList();
 
+        if (commandes.isEmpty) {
+          return Center(
+            child: Text(
+              'Aucune commande en cours',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          );
+        }
+
         return ListView.builder(
           itemCount: commandes.length,
           itemBuilder: (context, index) {
@@ -133,10 +264,26 @@ class CommandesEnCoursWidget extends StatelessWidget {
             return Card(
               elevation: 4,
               margin: EdgeInsets.all(8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: ListTile(
-                title: Text(commande.nomResidence),
+                title: Text(
+                  commande.nomResidence,
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 subtitle: Text('${DateFormat('dd/MM/yyyy – kk:mm').format(commande.dateCommande.toLocal())}'),
-                trailing: Text('${pourcentageAvancement.toStringAsFixed(0)}% avancé'),
+                trailing: Container(
+                  padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${pourcentageAvancement.toStringAsFixed(0)}% avancé',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => ValidationMenagePage(commande: commande),
@@ -147,6 +294,160 @@ class CommandesEnCoursWidget extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class CommandesPasseesWidget extends StatelessWidget {
+  final String entrepriseId;
+  final String agentId;
+  final List<String> residencesAffectees;
+  final bool isSuperviseur;
+
+  CommandesPasseesWidget({required this.entrepriseId, required this.agentId, required this.residencesAffectees, required this.isSuperviseur});
+
+  @override
+  Widget build(BuildContext context) {
+    DateTime now = DateTime.now();
+    DateTime startOfDay = DateTime(now.year, now.month, now.day);
+
+    Query commandesQuery = FirebaseFirestore.instance
+        .collection('commandes')
+        .where('entrepriseId', isEqualTo: entrepriseId)
+        .where('dateCommande', isLessThan: startOfDay);
+
+    if (!isSuperviseur) {
+      commandesQuery = commandesQuery.where('residenceId', whereIn: residencesAffectees);
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: commandesQuery.snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Erreur lors du chargement des commandes'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        List<Commande> commandes = snapshot.data!.docs
+            .map((doc) => Commande.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+            .toList();
+
+        return ListView(
+          children: commandes
+              .map(
+                (commande) => Card(
+              elevation: 4,
+              margin: EdgeInsets.all(8),
+              color: Colors.white,
+              child: ListTile(
+                title: Text(commande.nomResidence),
+                subtitle: Text(DateFormat('yyyy-MM-dd – kk:mm').format(commande.dateCommande.toLocal())),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ValidationMenagePage(commande: commande),
+                    ),
+                  );
+                },
+              ),
+            ),
+          )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class CreerCommandePopup extends StatelessWidget {
+  final String entrepriseId;
+
+  CreerCommandePopup({required this.entrepriseId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Créer une Commande'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('residences')
+            .where('entrepriseId', isEqualTo: entrepriseId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Une erreur s\'est produite'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('Aucune résidence trouvée pour cette entreprise'));
+          }
+
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Veuillez sélectionner une résidence',
+                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                    Residence residence = Residence.fromFirestore(document);
+                    return Card(
+                      margin: EdgeInsets.all(8.0),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: NetworkImage(residence.imageUrl),
+                          radius: 25,
+                        ),
+                        title: Text(residence.nom),
+                        onTap: () {
+                          if (kIsWeb) { // Sur PC
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CombinedSelectionDetailsPage(
+                                  entrepriseId: entrepriseId,
+                                  residence: residence,
+                                ),
+                              ),
+                            );
+                          } else {
+                            // Sur mobile, naviguer vers SelectionAppartementPage
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SelectionAppartementPage(
+                                  entrepriseId: entrepriseId,
+                                  residence: residence,
+                                  agentId: '',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

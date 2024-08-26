@@ -109,6 +109,21 @@ class ResidencesPage extends StatelessWidget {
         title: Text('Résidences'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              _showAddResidenceDialog(context);
+            },
+            icon: Icon(Icons.add, color: Colors.white),
+            label: Text('Nouvelle Résidence', style: TextStyle(color: Colors.white)),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4.0), // Moins arrondi
+              ),
+            ),
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -129,7 +144,7 @@ class ResidencesPage extends StatelessWidget {
           }
 
           return ListView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            padding: EdgeInsets.symmetric(horizontal: 16.0), // Padding droite et gauche
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               DocumentSnapshot document = snapshot.data!.docs[index];
@@ -147,91 +162,75 @@ class ResidencesPage extends StatelessWidget {
 
                   List<Appartement>? appartements = appartementsSnapshot.data;
 
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8.0),
-                    child: ListTile(
-                      contentPadding: EdgeInsets.all(16.0),
-                      leading: CircleAvatar(
-                        backgroundImage: residence.imageUrl.isNotEmpty
-                            ? NetworkImage(residence.imageUrl as String)
-                            : AssetImage('assets/images/placeholder.png') as ImageProvider,
-                        radius: 30,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Card(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: Colors.grey, width: 0.5),
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
-                      title: Text(
-                        residence.nom,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            residence.adresse,
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          if (appartements != null && appartements.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.person, size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${appartements.map((a) => a.nombrePersonnes).reduce((a, b) => a + b)}',
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.king_bed, size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${appartements.map((a) => a.nombreLitsDoubles).reduce((a, b) => a + b)}',
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.bed, size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${appartements.map((a) => a.nombreLitsSimples).reduce((a, b) => a + b)}',
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.bathtub, size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${appartements.map((a) => a.nombreSallesDeBains).reduce((a, b) => a + b)}',
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.all(16.0),
+                        leading: CircleAvatar(
+                          backgroundImage: residence.imageUrl.isNotEmpty
+                              ? NetworkImage(residence.imageUrl as String)
+                              : AssetImage('assets/images/placeholder.png') as ImageProvider,
+                          radius: 30,
+                        ),
+                        title: Text(
+                          residence.nom,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              residence.adresse,
+                              style: TextStyle(fontSize: 14),
                             ),
-                        ],
+                            if (appartements != null && appartements.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.king_bed, size: 16),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      '${appartements.map((a) => a.nombreLitsDoubles).reduce((a, b) => a + b)} lits doubles, ',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                    Icon(Icons.bed, size: 16),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      '${appartements.map((a) => a.nombreLitsSimples).reduce((a, b) => a + b)} lits simples, ',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                    Icon(Icons.bathtub, size: 16),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      '${appartements.map((a) => a.nombreSallesDeBains).reduce((a, b) => a + b)} salles de bains',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        onTap: () {
+                          if (kIsWeb) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => ParametrerPageWeb(entrepriseId: entrepriseId, residence: residence)),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => ParametrerPage(entrepriseId: entrepriseId, residence: residence)),
+                            );
+                          }
+                        },
                       ),
-                      onTap: () {
-                        if (kIsWeb) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => ParametrerPageWeb(entrepriseId: entrepriseId, residence: residence)),
-                          );
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => ParametrerPage(entrepriseId: entrepriseId, residence: residence)),
-                          );
-                        }
-                      },
                     ),
                   );
                 },
@@ -239,15 +238,6 @@ class ResidencesPage extends StatelessWidget {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showAddResidenceDialog(context);
-        },
-        label: Text('Nouvelle Résidence'),
-        icon: Icon(Icons.add),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
       ),
     );
   }
