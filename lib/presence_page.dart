@@ -1,10 +1,10 @@
+import 'dart:html' as html; // Import pour le téléchargement web
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:url_launcher/url_launcher.dart';  // Import pour lancer les appels téléphoniques
+import 'package:url_launcher/url_launcher.dart';  // Pour les appels téléphoniques
 import 'models/personnel.dart';
 import 'models/presence.dart';
 import 'models/residence.dart';
@@ -22,11 +22,14 @@ class _PresencePageState extends State<PresencePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   DateTime _selectedDate = DateTime.now();
   Map<String, bool> _presenceStatus = {};
+  int _totalAgents = 0;
+  int _totalPresents = 0;
 
   @override
   void initState() {
     super.initState();
     _loadPresence();
+    _calculateTotalPresence();
   }
 
   Future<void> _loadPresence() async {
@@ -51,6 +54,20 @@ class _PresencePageState extends State<PresencePage> {
     }
   }
 
+  Future<void> _calculateTotalPresence() async {
+    var personnelsSnapshot = await _firestore.collection('personnel')
+        .where('entrepriseId', isEqualTo: widget.entrepriseId)
+        .get();
+
+    setState(() {
+      _totalAgents = personnelsSnapshot.docs.length;
+      _totalPresents = personnelsSnapshot.docs.where((doc) {
+        String personnelId = doc.id;
+        return _presenceStatus[personnelId] == true;
+      }).length;
+    });
+  }
+
   Future<void> _loadPresenceForDate(DateTime date) async {
     DateTime startOfDay = DateTime(date.year, date.month, date.day);
     DateTime endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
@@ -71,13 +88,11 @@ class _PresencePageState extends State<PresencePage> {
         _presenceStatus = {};
       });
     }
+    await _calculateTotalPresence();
   }
 
   @override
   Widget build(BuildContext context) {
-    int totalPersonnel = _presenceStatus.length;
-    int totalPresent = _presenceStatus.values.where((status) => status).length;
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Fiche de Présence - ${DateFormat('dd/MM/yyyy').format(_selectedDate)}'),
@@ -90,7 +105,7 @@ class _PresencePageState extends State<PresencePage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Nombre de présents : $totalPresent / $totalPersonnel',
+                  'Nombre de présents : $_totalPresents / $_totalAgents',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 ElevatedButton(
@@ -239,15 +254,11 @@ class _PresencePageState extends State<PresencePage> {
         .where('date', isLessThan: endOfDay)
         .get();
 
-    var personnelDoc = await _firestore.collection('personnel').doc(personnelId).get();
-    var personnel = Personnel.fromFirestore(personnelDoc);
-
     if (snapshot.docs.isNotEmpty) {
       var docId = snapshot.docs.first.id;
       var fichePresence = FichePresence.fromFirestore(snapshot.docs.first);
 
       fichePresence.statutPresence[personnelId] = isPresent;
-      personnel = personnel.copyWith(statutPresence: isPresent ? 'présent' : 'non présent');
 
       await _firestore.collection('fichesPresence').doc(docId).update(fichePresence.toMap());
     } else {
@@ -258,13 +269,11 @@ class _PresencePageState extends State<PresencePage> {
       );
 
       await _firestore.collection('fichesPresence').add(newFichePresence.toMap());
-      personnel = personnel.copyWith(statutPresence: isPresent ? 'présent' : 'non présent');
     }
-
-    await _firestore.collection('personnel').doc(personnel.id).update(personnel.toMap());
 
     setState(() {
       _presenceStatus[personnelId] = isPresent;
+      _calculateTotalPresence(); // Mise à jour du total des présences
     });
   }
 
@@ -290,16 +299,20 @@ class _PresencePageState extends State<PresencePage> {
         ['Nom', 'Prénom', 'Téléphone', 'Présence']
       ];
 
-      personnelsSnapshot.docs.forEach((personnelDoc) {
-        var personnel = Personnel.fromFirestore(personnelDoc);
-        bool isPresent = _presenceStatus[personnel.id] ?? false;
-        data.add([
-          personnel.nom,
-          personnel.prenom,
-          personnel.telephone,
-          isPresent ? 'Présent' : 'Absent'
-        ]);
-      });
+      if (personnelsSnapshot.docs.isEmpty) {
+        data.add(['Aucun agent', '', '', '']);
+      } else {
+        personnelsSnapshot.docs.forEach((personnelDoc) {
+          var personnel = Personnel.fromFirestore(personnelDoc);
+          bool isPresent = _presenceStatus[personnel.id] ?? false;
+          data.add([
+            personnel.nom,
+            personnel.prenom,
+            personnel.telephone,
+            isPresent ? 'Présent' : 'Absent'
+          ]);
+        });
+      }
 
       allTables.add(
         pw.Column(
@@ -322,16 +335,30 @@ class _PresencePageState extends State<PresencePage> {
           children: [
             pw.Header(
               level: 0,
-              child: pw.Text('Fiche de Présence - ${DateFormat('dd/MM/yyyy').format(date)}', style: pw.TextStyle(fontSize: 24)),
+              child: pw.Text(
+                'Fiche de Présence - ${DateFormat('dd/MM/yyyy').format(date)}',
+                style: pw.TextStyle(fontSize: 24),
+              ),
             ),
+            pw.Text(
+              'Nombre de présents : $_totalPresents / $_totalAgents',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 20),
             ...allTables,
           ],
         ),
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdfDoc.save(),
-    );
+    final pdfBytes = await pdfDoc.save();
+    final blob = html.Blob([pdfBytes], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute('download', 'Fiche_Presence_${DateFormat('yyyyMMdd').format(date)}.pdf')
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
   }
 }

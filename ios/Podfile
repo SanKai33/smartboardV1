@@ -1,4 +1,4 @@
-platform :ios, '17.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -28,12 +28,12 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Mise à jour des versions à 10.29.0 pour toutes les dépendances Firebase
-  pod 'Firebase/Auth', '10.29.0'
-  pod 'Firebase/Firestore', '10.29.0'
-  pod 'Firebase/Storage', '10.29.0'
-  pod 'Firebase/Analytics', '10.29.0'
-  pod 'Firebase/Messaging', '10.29.0'
+  # Utilisation des dernières versions des Firebase SDK définies dans firebase_core (11.0.0)
+  pod 'Firebase/Auth'
+  pod 'Firebase/Firestore'
+  pod 'Firebase/Storage'
+  pod 'Firebase/Analytics'
+  pod 'Firebase/Messaging'
 
   target 'RunnerTests' do
     inherit! :search_paths

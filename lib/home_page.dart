@@ -8,7 +8,6 @@ import 'Visualisation.dart';
 import 'appWebEntreprise/creer_commande_web.dart';
 import 'historique_commande_page.dart';
 import 'models/commande.dart';
-
 import 'models/entreprise.dart';
 import 'models/residence.dart';
 import 'validation_menage_page.dart';
@@ -32,28 +31,8 @@ class HomePage extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: !kIsWeb
-            ? AppBar(
-          title: Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: AssetImage('assets/images/icon.png'),
-              ),
-              SizedBox(width: 10),
-              FutureBuilder<String>(
-                future: _fetchEntrepriseName(entrepriseId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator();
-                  }
-                  return Text(snapshot.data ?? '');
-                },
-              ),
-              Spacer(),
-            ],
-          ),
-        )
-            : null,
+        // Suppression de l'AppBar pour toutes les versions
+        appBar: null,
         body: kIsWeb
             ? Row(
           children: [

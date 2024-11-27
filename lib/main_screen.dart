@@ -2,11 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smartboard/messagerie.dart';
 import 'package:smartboard/parametrer_compte.dart';
-
 import 'package:smartboard/presence_page.dart';
 import 'commande_passé_web.dart';
 import 'home_page.dart';
-
 import 'residences_page.dart';
 import 'notifications_page.dart';
 import 'personnel_page.dart';
@@ -61,27 +59,37 @@ class _MainScreenState extends State<MainScreen> {
   AppBar _buildWebAppBar() {
     return AppBar(
       automaticallyImplyLeading: false, // Remove the back button
-      title: Row(
-        children: [
-          Image.asset('assets/images/logo.png', height: 40),
-          SizedBox(width: 10),
-          Text('Smartboard'),
-          Spacer(),
-          if (_currentOrders.isNotEmpty)
-            Text(
-              'Commande en cours',
-              style: TextStyle(fontSize: 18, color: Colors.red),
-            ),
-        ],
+      title: SingleChildScrollView(
+        scrollDirection: Axis.horizontal, // Ajoute un défilement horizontal
+        child: Row(
+          children: [
+            Image.asset('assets/images/logo.png', height: 40),
+            SizedBox(width: 10),
+            Text('Smartboard'),
+            SizedBox(width: 20), // Espacement supplémentaire pour les petits écrans
+            if (_currentOrders.isNotEmpty)
+              Text(
+                'Commande en cours',
+                style: TextStyle(fontSize: 18, color: Colors.red),
+              ),
+          ],
+        ),
       ),
       actions: [
-        _buildWebMenuButton('Home', Icons.home, 0),
-        _buildWebMenuButton('Historique', Icons.history, 1),
-        _buildWebMenuButton('Notifications', Icons.notifications, 2),
-        _buildWebMenuButton('Personnel', Icons.group, 3),
-        _buildWebMenuButton('Présence', Icons.access_time, 4),
-        _buildWebMenuButton('Résidences', Icons.apartment, 5),
-        _buildWebMenuButton('Paramètres', Icons.settings, 6),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal, // Rendre les actions défilantes
+          child: Row(
+            children: [
+              _buildWebMenuButton('Home', Icons.home, 0),
+              _buildWebMenuButton('Historique', Icons.history, 1),
+              _buildWebMenuButton('Notifications', Icons.notifications, 2),
+              _buildWebMenuButton('Personnel', Icons.group, 3),
+              _buildWebMenuButton('Présence', Icons.access_time, 4),
+              _buildWebMenuButton('Résidences', Icons.apartment, 5),
+              _buildWebMenuButton('Paramètres', Icons.settings, 6),
+            ],
+          ),
+        ),
       ],
     );
   }
